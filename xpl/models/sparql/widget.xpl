@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-	Copyright (C) 2010 Ethan Gruber
-	EADitor: https://github.com/ewg118/eaditor
-	Apache License 2.0: https://github.com/ewg118/eaditor
+	Author: Ethan Gruber
 	
 -->
 <p:config xmlns:p="http://www.orbeon.com/oxf/pipeline" xmlns:oxf="http://www.orbeon.com/oxf/processors">
@@ -81,12 +79,15 @@ PREFIX rdfs:	<http://www.w3.org/2000/01/rdf-schema#>
 
 SELECT ?object ?title ?findspot ?hoard ?placeName ?hoardLabel ?lat ?long ?type ?burial WHERE {
 { ?object a nmo:NumismaticObject ;
- nmo:hasTypeSeriesItem <typeUri>}
-UNION { ?broader skos:broader+ <typeUri> .
+ nmo:hasTypeSeriesItem <typeURI>}
+UNION { <typeURI> skos:exactMatch ?match .
+?object nmo:hasTypeSeriesItem ?match ;
+  a nmo:NumismaticObject }
+UNION { ?broader skos:broader+ <typeURI> .
 ?object nmo:hasTypeSeriesItem ?broader ;
   a nmo:NumismaticObject }
 UNION { ?contents a dcmitype:Collection ; 
-  nmo:hasTypeSeriesItem <typeUri> .
+  nmo:hasTypeSeriesItem <typeURI> .
 ?object dcterms:tableOfContents ?contents }
 ?object dcterms:title ?title .			
 { ?object nmo:hasFindspot ?findspot }
@@ -117,12 +118,15 @@ PREFIX rdfs:	<http://www.w3.org/2000/01/rdf-schema#>
 
 SELECT ?object ?title ?findspot ?hoard ?placeName ?hoardLabel ?lat ?long ?type ?burial WHERE {
 { ?object a nmo:NumismaticObject ;
- nmo:hasTypeSeriesItem <typeUri>}
-UNION { ?broader skos:broader+ <typeUri> .
+ nmo:hasTypeSeriesItem <typeURI>}
+UNION { <typeURI> skos:exactMatch ?match .
+?object nmo:hasTypeSeriesItem ?match ;
+  a nmo:NumismaticObject }
+UNION { ?broader skos:broader+ <typeURI> .
 ?object nmo:hasTypeSeriesItem ?broader ;
   a nmo:NumismaticObject }
 UNION { ?contents a dcmitype:Collection ; 
-  nmo:hasTypeSeriesItem <typeUri> .
+  nmo:hasTypeSeriesItem <typeURI> .
 ?object dcterms:tableOfContents ?contents }
 ?object dcterms:title ?title .			
 { ?object nmo:hasFindspot ?findspot }
@@ -153,12 +157,15 @@ PREFIX rdfs:	<http://www.w3.org/2000/01/rdf-schema#>
 
 SELECT DISTINCT ?findspot ?findspotLabel  ?lat ?long WHERE {
 { ?object a nmo:NumismaticObject ;
- nmo:hasTypeSeriesItem <typeUri>}
-UNION { ?broader skos:broader+ <typeUri> .
+ nmo:hasTypeSeriesItem <typeURI>}
+UNION { <typeURI> skos:exactMatch ?match .
+?object nmo:hasTypeSeriesItem ?match ;
+  a nmo:NumismaticObject }
+UNION { ?broader skos:broader+ <typeURI> .
 ?object nmo:hasTypeSeriesItem ?broader ;
   a nmo:NumismaticObject }
 UNION { ?contents a dcmitype:Collection ; 
-  nmo:hasTypeSeriesItem <typeUri> .
+  nmo:hasTypeSeriesItem <typeURI> .
 ?object dcterms:tableOfContents ?contents }
 ?object dcterms:title ?title .			
 { ?object nmo:hasFindspot ?findspot }
@@ -204,7 +211,7 @@ ORDER BY asc(?label)
 				</xsl:variable>
 
 				<xsl:variable name="service">
-					<xsl:choose>
+					<xsl:choose>					
 						<xsl:when test="$template = 'avgMeasurement'">
 							<xsl:value-of select="concat('http://nomisma.org/apis/', $api, '?constraints=', encode-for-uri($constraints))"/>
 						</xsl:when>
@@ -212,7 +219,7 @@ ORDER BY asc(?label)
 							<xsl:value-of select="concat($endpoint, '?query=', encode-for-uri(normalize-space(replace(replace(replace($query, 'TYPE_SERIES', /config/type_series), 'LANG', $langStr), 'FIELD', $field))), '&amp;output=xml')"/>
 						</xsl:when>
 						<xsl:otherwise>
-							<xsl:value-of select="concat($endpoint, '?query=', encode-for-uri(normalize-space(replace($query, 'typeUri', $uri))), '&amp;output=xml')"/>
+							<xsl:value-of select="concat($endpoint, '?query=', encode-for-uri(normalize-space(replace($query, 'typeURI', $uri))), '&amp;output=xml')"/>
 						</xsl:otherwise>
 					</xsl:choose>
 				</xsl:variable>

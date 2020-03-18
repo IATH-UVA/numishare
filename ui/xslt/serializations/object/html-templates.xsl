@@ -543,6 +543,7 @@
 			</xsl:choose>
 		</li>
 	</xsl:template>
+	
 	<xsl:template name="display-label">
 		<xsl:param name="field"/>
 		<xsl:param name="value"/>
@@ -550,13 +551,25 @@
 		<xsl:param name="position"/>
 
 		<xsl:choose>
-			<xsl:when test="string($position) and $positions//position[@value = $position]">
+			<xsl:when test="$field = 'symbol'">
 				<xsl:variable name="side" select="substring(parent::node()/name(), 1, 3)"/>
-				<a
-					href="{$display_path}results?q=symbol_{$side}_{$position}_facet:&#x022;{$value}&#x022;{if (string($langParam)) then concat('&amp;lang=', $langParam) else ''}">
-					<xsl:value-of select="$value"/>
-				</a>
+				
+				<xsl:choose>
+					<xsl:when test="string($position) and $positions//position[@value = $position]">						
+						<a
+							href="{$display_path}results?q=symbol_{$side}_{$position}_facet:&#x022;{$value}&#x022;{if (string($langParam)) then concat('&amp;lang=', $langParam) else ''}">
+							<xsl:value-of select="$value"/>
+						</a>
+					</xsl:when>
+					<xsl:otherwise>
+						<a
+							href="{$display_path}results?q=symbol_{$side}_facet:&#x022;{$value}&#x022;{if (string($langParam)) then concat('&amp;lang=', $langParam) else ''}">
+							<xsl:value-of select="$value"/>
+						</a>
+					</xsl:otherwise>
+				</xsl:choose>
 			</xsl:when>
+			
 			<xsl:when test="contains($facets, $field)">
 				<a href="{$display_path}results?q={$field}_facet:&#x022;{$value}&#x022;{if (string($langParam)) then concat('&amp;lang=', $langParam) else ''}">
 					<xsl:choose>
@@ -1010,22 +1023,7 @@
 	<xsl:template name="icons">
 		<div class="row pull-right icons">
 			<div class="col-md-12">
-				<ul class="list-inline">
-					<li>
-						<strong>SHARE:</strong>
-					</li>
-					<li>
-						<!-- AddThis Button BEGIN -->
-						<div class="addthis_toolbox addthis_default_style">
-							<a class="addthis_button_preferred_1"/>
-							<a class="addthis_button_preferred_2"/>
-							<a class="addthis_button_preferred_3"/>
-							<a class="addthis_button_preferred_4"/>
-							<a class="addthis_button_compact"/>
-							<a class="addthis_counter addthis_bubble_style"/>
-						</div>
-						<script type="text/javascript" src="//s7.addthis.com/js/300/addthis_widget.js#pubid=xa-525d63ef6a07cd89"/>
-					</li>
+				<ul class="list-inline">										
 					<li>
 						<strong>EXPORT:</strong>
 					</li>
@@ -1207,14 +1205,32 @@
 				</xsl:choose>
 			</xsl:attribute>
 		</meta>
+		
+		<!-- twitter microdata -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title">
+			<xsl:attribute name="content">
+				<xsl:choose>
+					<xsl:when test="descendant::*:descMeta/*:title[@xml:lang = $lang]">
+						<xsl:value-of select="descendant::*:descMeta/*:title[@xml:lang = $lang]"/>
+					</xsl:when>
+					<xsl:otherwise>
+						<xsl:value-of select="descendant::*:descMeta/*:title[@xml:lang = 'en']"/>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:attribute>
+		</meta>		
+		<meta name="twitter:url" content="{$objectUri}"/>
+		
 
-		<xsl:for-each select="//mets:fileGrp/mets:file[@USE = 'reference']/mets:FLocat/@xlink:href">
+		<xsl:for-each select="//mets:fileGrp[@USE='obverse']/mets:file[@USE = 'reference']/mets:FLocat/@xlink:href">
 			<meta property="og:image" content="{.}"/>
+			<meta name="twitter:image" content="{.}" />
 		</xsl:for-each>
 
 		<!-- CSS -->
 		<link rel="shortcut icon" type="image/x-icon" href="{$include_path}/images/favicon.png"/>
-		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"/>
+		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1"/>
 
 		<xsl:for-each select="//config/includes/include">
@@ -1229,8 +1245,8 @@
 		</xsl:for-each>
 
 		<!-- bootstrap -->
-		<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"/>
-		<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"/>
+		<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+		<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"/>
 		<xsl:if test="string(//config/google_analytics)">
 			<script type="text/javascript">
 				<xsl:value-of select="//config/google_analytics"/>
@@ -1238,8 +1254,8 @@
 		</xsl:if>
 
 		<!-- always include leaflet -->
-		<link rel="stylesheet" href="https://unpkg.com/leaflet@0.7.7/dist/leaflet.css"/>
-		<script type="text/javascript" src="https://unpkg.com/leaflet@0.7.7/dist/leaflet.js"/>
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css"/>
+		<script type="text/javascript" src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"/>
 		<script type="text/javascript" src="{$include_path}/javascript/leaflet.ajax.min.js"/>
 	</xsl:template>
 </xsl:stylesheet>

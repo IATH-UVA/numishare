@@ -38,7 +38,7 @@
 				<meta name="viewport" content="width=device-width, initial-scale=1"/>
 
 				<!-- jquery -->
-				<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"/>				
+				<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"/>				
 
 				<xsl:for-each select="//config/includes/include">
 					<xsl:choose>
@@ -52,8 +52,8 @@
 				</xsl:for-each>
 
 				<!-- bootstrap -->
-				<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"/>
-				<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"/>
+				<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+				<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"/>
 				<script type="text/javascript" src="{$include_path}/javascript/bootstrap-multiselect.js"/>
 				<link rel="stylesheet" href="{$include_path}/css/bootstrap-multiselect.css" type="text/css"/>
 				<link type="text/css" href="{$include_path}/css/fullscreen.css" rel="stylesheet"/>
@@ -79,12 +79,12 @@
 						<script type="text/javascript" src="{$include_path}/javascript/jquery.fancybox.pack.js?v=2.1.5"/>
 						
 						<!-- maps-->
-						<link rel="stylesheet" href="https://unpkg.com/leaflet@0.7.7/dist/leaflet.css"/>
+						<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css"/>
 						<link rel="stylesheet" href="{$include_path}/css/MarkerCluster.css"/>
 						<link rel="stylesheet" href="{$include_path}/css/MarkerCluster.Default.css"/>
 						
 						<!-- js -->
-						<script src="https://unpkg.com/leaflet@0.7.7/dist/leaflet.js"/>					
+						<script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"/>					
 						<script type="text/javascript" src="{$include_path}/javascript/leaflet.ajax.min.js"/>
 						<script type="text/javascript" src="{$include_path}/javascript/leaflet.markercluster.js"/>
 						<script type="text/javascript" src="{$include_path}/javascript/map_functions.js"/>

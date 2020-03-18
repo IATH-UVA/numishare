@@ -1872,7 +1872,7 @@
 				</xsl:choose>
 			</xsl:when>
 			<xsl:otherwise>
-				<xsl:choose>
+				<xsl:choose>					
 					<xsl:when test="$label = 'acquiredFrom'">Acquired From</xsl:when>
 					<xsl:when test="$label = 'adminDesc'">Administrative History</xsl:when>
 					<xsl:when test="$label = 'chronItem'">Event</xsl:when>
@@ -4074,6 +4074,7 @@
 					<xsl:when test="$label = 'header_maps'">Maps</xsl:when>
 					<xsl:when test="$label = 'header_contributors'">Contributors</xsl:when>
 					<xsl:when test="$label = 'header_compare'">Compare</xsl:when>
+					<xsl:when test="$label = 'header_feedback'">Feedback</xsl:when>
 					<xsl:when test="$label = 'header_symbols'">Symbols</xsl:when>
 					<xsl:when test="$label = 'header_analyze'">Analyze Hoards</xsl:when>
 					<xsl:when test="$label = 'header_visualize'">Visualize Queries</xsl:when>
@@ -4111,6 +4112,7 @@
 					<xsl:when test="$label = 'results_hoards'">hoards</xsl:when>
 					<xsl:when test="$label = 'results_and'">and</xsl:when>
 					<xsl:when test="$label = 'maps_legend'">Legend</xsl:when>
+					<xsl:when test="$label = 'position_any'">Any Position</xsl:when>
 					<xsl:when test="$label = 'visualize_typological'">Typological Analysis</xsl:when>
 					<xsl:when test="$label = 'visualize_measurement'">Measurement Analysis</xsl:when>
 					<xsl:when test="$label = 'visualize_desc'">Use the data selection and visualization options below to generate a chart based on selected parameters. Instructions
@@ -4502,7 +4504,7 @@
 			<xsl:when test="ancestor::metadata">
 				<xsl:value-of select="concat('&#x022;', replace($val, '&#x022;', '\\&#x022;'), '&#x022;')"/>
 			</xsl:when>
-			<xsl:when test="number($val)">
+			<xsl:when test="number($val) or $val = '0'">
 				<xsl:choose>
 					<xsl:when test="@datatype = 'xs:string'">
 						<xsl:value-of select="concat('&#x022;', replace($val, '&#x022;', '\\&#x022;'), '&#x022;')"/>
@@ -4516,6 +4518,51 @@
 				<xsl:value-of select="concat('&#x022;', replace($val, '&#x022;', '\\&#x022;'), '&#x022;')"/>
 			</xsl:otherwise>
 		</xsl:choose>
+	</xsl:template>
+	
+	<!-- create human-readable label for RDF properties or classes -->
+	<xsl:function name="numishare:getLabelforRDF">
+		<xsl:param name="element"/>
+		<xsl:param name="lang"/>
+		
+		<xsl:choose>
+			<xsl:when test="$lang = 'en'">
+				<xsl:choose>
+					<xsl:when test="$element = 'crm:P106_is_composed_of'">Constituent Letters</xsl:when>
+					<xsl:when test="$element = 'crmdig:D1_Digital_Object'">Digital Object</xsl:when>
+					<xsl:when test="$element = 'dcterms:creator'">Creator</xsl:when>
+					<xsl:when test="$element = 'dcterms:format'">Media Type</xsl:when>
+					<xsl:when test="$element = 'dcterms:isPartOf'">Field of Numismatics</xsl:when>
+					<xsl:when test="$element = 'dcterms:license'">License</xsl:when>
+					<xsl:when test="$element = 'dcterms:source'">Source</xsl:when>
+					<xsl:when test="$element = 'skos:definition'">Definition</xsl:when>
+					<xsl:when test="$element = 'skos:prefLabel'">Preferred Label</xsl:when>
+				</xsl:choose>
+			</xsl:when>
+		</xsl:choose>
+	</xsl:function>
+	
+	<xsl:template name="numishare:getNudsDocument">
+		<xsl:param name="uri"/>
+		
+		<!-- evaluate pattern to determine how to get the NUDS XML export -->
+		<xsl:variable name="xml-url">
+			<xsl:choose>
+				<xsl:when test="matches($uri, '^https://rpc\.ashmus\.ox\.ac\.uk')">
+					<xsl:variable name="pieces" select="tokenize($uri, '/')"/>
+					<xsl:value-of select="concat('https://rpc.ashmus.ox.ac.uk/id/rpc-', $pieces[5], '-', $pieces[6], '.xml')"/>
+				</xsl:when>
+				<xsl:otherwise>
+					<xsl:value-of select="concat($uri, '.xml')"/>
+				</xsl:otherwise>
+			</xsl:choose>
+			
+		</xsl:variable>
+		<object xlink:href="{$uri}">
+			<xsl:if test="doc-available($xml-url)">
+				<xsl:copy-of select="document($xml-url)/nuds:nuds"/>
+			</xsl:if>
+		</object>
 	</xsl:template>
 
 	<!-- ***** Visualization Interface Functions ***** -->
@@ -4607,6 +4654,33 @@
 						</xsl:matching-substring>
 					</xsl:analyze-string>
 				</xsl:when>
+				<xsl:when test="contains(., 'authPerson')">
+					<xsl:analyze-string select="." regex="authPerson\s(nm:.*)">
+						<xsl:matching-substring>
+							<xsl:value-of select="numishare:regularize_node('authority', $lang)"/>
+							<xsl:text>: </xsl:text>
+							<xsl:value-of select="nomisma:getLabel(regex-group(1), $lang)"/>
+						</xsl:matching-substring>
+					</xsl:analyze-string>
+				</xsl:when>
+				<xsl:when test="contains(., 'authCorp')">
+					<xsl:analyze-string select="." regex="authCorp\s(nm:.*)">
+						<xsl:matching-substring>
+							<xsl:value-of select="numishare:regularize_node('state', $lang)"/>
+							<xsl:text>: </xsl:text>
+							<xsl:value-of select="nomisma:getLabel(regex-group(1), $lang)"/>
+						</xsl:matching-substring>
+					</xsl:analyze-string>
+				</xsl:when>
+				<xsl:when test="contains(., 'dynasty')">
+					<xsl:analyze-string select="." regex="authCorp\s(nm:.*)">
+						<xsl:matching-substring>
+							<xsl:value-of select="numishare:regularize_node('dynasty', $lang)"/>
+							<xsl:text>: </xsl:text>
+							<xsl:value-of select="nomisma:getLabel(regex-group(1), $lang)"/>
+						</xsl:matching-substring>
+					</xsl:analyze-string>
+				</xsl:when>
 				<xsl:when test="contains(., 'region')">
 					<xsl:analyze-string select="." regex="region\s(nm:.*)">
 						<xsl:matching-substring>
@@ -4674,35 +4748,62 @@
 		<xsl:param name="date"/>
 
 		<xsl:variable name="time">T00:00:00Z</xsl:variable>
-
+		
+		<!-- the data should be assumed to be XSD 1.0 compliant, which means that in order to make BC dates compliant to ISO 8601/XSD 1.1, 
+			a year should be added mathematically so that 1 BC is "0000" in the JSON output -->
 		<xsl:choose>
-			<xsl:when test="$date castable as xs:gYear">
-				<xsl:value-of select="concat($date, '-01-01', $time)"/>
+			<xsl:when test="substring($date, 1, 1) = '-'">
+				<xsl:choose>
+					<xsl:when test="$date castable as xs:gYear">
+						<xsl:value-of select="concat(xs:date(concat($date, '-01-01')) + xs:dayTimeDuration('P365DT0M'), $time)"/>
+					</xsl:when>
+					<xsl:when test="$date castable as xs:gYearMonth">
+						<xsl:value-of select="concat(xs:date(concat($date, '-01')) + xs:dayTimeDuration('P365DT0M'), $time)"/>
+					</xsl:when>
+					<xsl:when test="$date castable as xs:date">
+						<xsl:value-of select="concat(xs:date($date) + xs:dayTimeDuration('P365DT0M'), $time)"/>
+					</xsl:when>
+					<xsl:when test="$date castable as xs:dateTime">
+						<xsl:value-of select="$date"/>
+					</xsl:when>
+				</xsl:choose>
 			</xsl:when>
-			<xsl:when test="$date castable as xs:gYearMonth">
-				<xsl:value-of select="concat($date, '-01', $time)"/>
-			</xsl:when>
-			<xsl:when test="$date castable as xs:date">
-				<xsl:value-of select="concat($date, $time)"/>
-			</xsl:when>
-			<xsl:when test="$date castable as xs:dateTime">
-				<xsl:value-of select="$date"/>
-			</xsl:when>
+			<xsl:otherwise>
+				<xsl:choose>
+					<xsl:when test="$date castable as xs:gYear">
+						<xsl:value-of select="concat($date, '-01-01', $time)"/>
+					</xsl:when>
+					<xsl:when test="$date castable as xs:gYearMonth">
+						<xsl:value-of select="concat($date, '-01', $time)"/>
+					</xsl:when>
+					<xsl:when test="$date castable as xs:date">
+						<xsl:value-of select="concat($date, $time)"/>
+					</xsl:when>
+					<xsl:when test="$date castable as xs:dateTime">
+						<xsl:value-of select="$date"/>
+					</xsl:when>
+				</xsl:choose>
+			</xsl:otherwise>
 		</xsl:choose>
+		
 	</xsl:function>
 
 	<!-- result element names into AAT curies -->
 	<xsl:function name="numishare:normalizeClassification">
 		<xsl:param name="name"/>
+		
+		<!-- obverse/reverse = fronts/backs in AAT, not obverse and reverse -->
 
 		<xsl:choose>
 			<xsl:when test="$name = 'axis'">http://nomisma.org/id/axis</xsl:when>
+			<xsl:when test="$name = 'thickness'">aat:300072633</xsl:when>
 			<xsl:when test="$name = 'diameter'">aat:300055624</xsl:when>
 			<xsl:when test="$name = 'height'">aat:300055644</xsl:when>
 			<xsl:when test="$name = 'identifier'">aat:300312355</xsl:when>
-			<xsl:when test="$name = 'obverse'">aat:300078814</xsl:when>
-			<xsl:when test="$name = 'reverse'">aat:300078820</xsl:when>
+			<xsl:when test="$name = 'obverse'">aat:300190703</xsl:when>
+			<xsl:when test="$name = 'reverse'">aat:300190692</xsl:when>
 			<xsl:when test="$name = 'weight'">aat:300056240</xsl:when>
+			<xsl:when test="$name = 'width'">aat:300055647</xsl:when>
 			<xsl:otherwise>UNCLASSIFIED</xsl:otherwise>
 		</xsl:choose>
 	</xsl:function>

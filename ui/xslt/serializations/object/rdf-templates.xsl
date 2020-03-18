@@ -3,12 +3,13 @@
 	xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:nm="http://nomisma.org/id/"
 	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:nuds="http://nomisma.org/nuds" xmlns:nh="http://nomisma.org/nudsHoard"
 	xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:oa="http://www.w3.org/ns/oa#"
-	xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#" xmlns:pelagios="http://pelagios.github.io/vocab/terms#" xmlns:gml="http://www.opengis.net/gml"
-	xmlns:void="http://rdfs.org/ns/void#" xmlns:relations="http://pelagios.github.io/vocab/relations#" xmlns:nmo="http://nomisma.org/ontology#"
-	xmlns:edm="http://www.europeana.eu/schemas/edm/" xmlns:svcs="http://rdfs.org/sioc/services#" xmlns:doap="http://usefulinc.com/ns/doap#"
-	xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:crm="http://www.cidoc-crm.org/cidoc-crm/" xmlns:numishare="https://github.com/ewg118/numishare"
-	xmlns:foaf="http://xmlns.com/foaf/0.1/" xmlns:mets="http://www.loc.gov/METS/" xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-	exclude-result-prefixes="xsl xs nuds nh xlink numishare mets gml" version="2.0">
+	xmlns:un="http://www.owl-ontologies.com/Ontology1181490123.owl#" xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+	xmlns:pelagios="http://pelagios.github.io/vocab/terms#" xmlns:gml="http://www.opengis.net/gml" xmlns:void="http://rdfs.org/ns/void#"
+	xmlns:relations="http://pelagios.github.io/vocab/relations#" xmlns:nmo="http://nomisma.org/ontology#" xmlns:edm="http://www.europeana.eu/schemas/edm/"
+	xmlns:svcs="http://rdfs.org/sioc/services#" xmlns:doap="http://usefulinc.com/ns/doap#" xmlns:dcmitype="http://purl.org/dc/dcmitype/"
+	xmlns:crm="http://www.cidoc-crm.org/cidoc-crm/" xmlns:numishare="https://github.com/ewg118/numishare" xmlns:foaf="http://xmlns.com/foaf/0.1/"
+	xmlns:mets="http://www.loc.gov/METS/" xmlns:xsd="http://www.w3.org/2001/XMLSchema#" exclude-result-prefixes="xsl xs nuds nh xlink numishare mets gml"
+	version="2.0">
 
 	<!-- ************** OBJECT-TO-RDF **************** -->
 	<xsl:template match="nuds:nuds | nh:nudsHoard" mode="pelagios">
@@ -269,7 +270,7 @@
 				<xsl:for-each select="$fileSec/mets:fileGrp[@USE = $side]/mets:file">
 					<xsl:variable name="href">
 						<xsl:choose>
-							<xsl:when test="contains(mets:FLocat/@xlink:href, 'http://')">
+							<xsl:when test="matches(mets:FLocat/@xlink:href, 'https?://')">
 								<xsl:value-of select="mets:FLocat/@xlink:href"/>
 							</xsl:when>
 							<xsl:otherwise>
@@ -333,7 +334,7 @@
 	<xsl:template match="mets:file" mode="crm">
 		<xsl:variable name="href">
 			<xsl:choose>
-				<xsl:when test="contains(mets:FLocat/@xlink:href, 'http://')">
+				<xsl:when test="matches(mets:FLocat/@xlink:href, 'https?://')">
 					<xsl:value-of select="mets:FLocat/@xlink:href"/>
 				</xsl:when>
 				<xsl:otherwise>
@@ -351,6 +352,8 @@
 	<!-- PROCESS NUDS RECORDS INTO NOMISMA COMPLIANT RDF MODELS -->
 	<xsl:template match="nuds:nuds" mode="nomisma">
 		<xsl:variable name="id" select="descendant::*[local-name() = 'recordId']"/>
+		
+		<!-- deprecated objects (usually types and subtypes) -->
 		<xsl:choose>
 			<xsl:when
 				test="descendant::*:maintenanceStatus != 'new' and descendant::*:maintenanceStatus != 'derived' and descendant::*:maintenanceStatus != 'revised'">
@@ -360,6 +363,9 @@
 						<xsl:when test="@recordType = 'physical'">nmo:NumismaticObject</xsl:when>
 					</xsl:choose>
 				</xsl:variable>
+				
+				<xsl:variable name="hasDefinition" select="boolean(nuds:descMeta/nuds:noteSet/nuds:note[@semantic = 'skos:definition'])" as="xs:boolean"/>
+				
 				<xsl:element name="{$element}">
 					<xsl:attribute name="rdf:about">
 						<xsl:value-of
@@ -371,7 +377,7 @@
 					</xsl:attribute>
 
 					<!-- include any additional prefix/namespace before processing otherRecordIds -->
-					<xsl:for-each select="descendant::*:semanticDeclaration">
+					<xsl:for-each select="nuds:control/nuds:semanticDeclaration">
 						<xsl:namespace name="{*:prefix}" select="*:namespace"/>
 					</xsl:for-each>
 
@@ -385,12 +391,14 @@
 							</xsl:if>
 							<xsl:value-of select="."/>
 						</skos:prefLabel>
-						<skos:definition>
-							<xsl:if test="string(@xml:lang)">
-								<xsl:attribute name="xml:lang" select="@xml:lang"/>
-							</xsl:if>
-							<xsl:value-of select="."/>
-						</skos:definition>
+						<xsl:if test="$hasDefinition = false()">
+							<skos:definition>
+								<xsl:if test="string(@xml:lang)">
+									<xsl:attribute name="xml:lang" select="@xml:lang"/>
+								</xsl:if>
+								<xsl:value-of select="."/>
+							</skos:definition>
+						</xsl:if>
 					</xsl:for-each>
 
 					<!-- source nmo:TypeSeries, use typeSeries inherent to NUDS by default, if available -->
@@ -402,6 +410,9 @@
 							<dcterms:source rdf:resource="{//config/type_series}"/>
 						</xsl:otherwise>
 					</xsl:choose>
+
+					<!-- map notes with skos properties into skos -->
+					<xsl:apply-templates select="nuds:descMeta/nuds:noteSet/nuds:note[@semantic]"/>
 
 					<!-- include other properites and URIs -->
 					<xsl:for-each select="descendant::*:otherRecordId[string(@semantic)]">
@@ -423,23 +434,33 @@
 			<xsl:otherwise>
 				<xsl:choose>
 					<xsl:when test="@recordType = 'conceptual'">
+						<xsl:variable name="hasDefinition" select="boolean(nuds:descMeta/nuds:noteSet/nuds:note[@semantic = 'skos:definition'])" as="xs:boolean"/>
+						
 						<nmo:TypeSeriesItem rdf:about="{if (string($uri_space)) then concat($uri_space, $id) else concat($url, 'id/', $id)}">
 							<rdf:type rdf:resource="http://www.w3.org/2004/02/skos/core#Concept"/>
 							<!-- insert titles -->
-							<xsl:for-each select="descendant::nuds:descMeta/nuds:title">
+							<xsl:for-each select="nuds:descMeta/nuds:title">
 								<skos:prefLabel>
 									<xsl:if test="string(@xml:lang)">
 										<xsl:attribute name="xml:lang" select="@xml:lang"/>
 									</xsl:if>
 									<xsl:value-of select="."/>
 								</skos:prefLabel>
-								<skos:definition>
-									<xsl:if test="string(@xml:lang)">
-										<xsl:attribute name="xml:lang" select="@xml:lang"/>
-									</xsl:if>
-									<xsl:value-of select="."/>
-								</skos:definition>
+								
+								<!-- only display the definition if it's not explicitly included in a nuds:note -->
+								<xsl:if test="$hasDefinition = false()">
+									<skos:definition>
+										<xsl:if test="string(@xml:lang)">
+											<xsl:attribute name="xml:lang" select="@xml:lang"/>
+										</xsl:if>
+										<xsl:value-of select="."/>
+									</skos:definition>
+								</xsl:if>
+								
 							</xsl:for-each>
+							
+							<!-- map notes with skos properties into skos -->
+							<xsl:apply-templates select="nuds:descMeta/nuds:noteSet/nuds:note[@semantic]"/>
 
 							<!-- source nmo:TypeSeries, use typeSeries inherent to NUDS by default, if available -->
 							<xsl:choose>
@@ -452,10 +473,10 @@
 							</xsl:choose>
 
 							<!-- other ids -->
-							<xsl:for-each select="descendant::*:otherRecordId[string(@semantic)]">
+							<xsl:for-each select="nuds:control/nuds:otherRecordId[string(@semantic)]">
 								<xsl:variable name="uri"
 									select="
-										if (contains(., 'http://')) then
+										if (matches(., 'https?://')) then
 											.
 										else
 											concat($url, 'id/', .)"/>
@@ -509,17 +530,18 @@
 									</xsl:choose>
 								</nmo:hasCollection>
 							</xsl:for-each>
-							
+
 							<!-- type series items -->
-							<xsl:for-each select="distinct-values(nuds:descMeta/nuds:typeDesc/@xlink:href|descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][@xlink:href]/@xlink:href)">
+							<xsl:for-each
+								select="distinct-values(nuds:descMeta/nuds:typeDesc[not(@certainty)]/@xlink:href | descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][@xlink:href][not(@certainty)]/@xlink:href)">
 								<nmo:hasTypeSeriesItem rdf:resource="{.}"/>
 							</xsl:for-each>
-							
+
 							<!-- other ids -->
 							<xsl:for-each select="descendant::*:otherRecordId[string(@semantic)]">
 								<xsl:variable name="uri"
 									select="
-										if (contains(., 'http://')) then
+										if (matches(., 'https?://')) then
 											.
 										else
 											concat($url, 'id/', .)"/>
@@ -560,7 +582,13 @@
 						<!-- findspot object -->
 						<xsl:if test="nuds:descMeta/nuds:findspotDesc/nuds:findspot[gml:Point]">
 							<xsl:apply-templates select="nuds:descMeta/nuds:findspotDesc/nuds:findspot[gml:Point]" mode="nomisma-object">
-								<xsl:with-param name="objectURI" select="if (string($uri_space)) then concat($uri_space, $id) else concat($url, 'id/', $id)"/>
+								<xsl:with-param name="objectURI"
+									select="
+										if (string($uri_space)) then
+											concat($uri_space, $id)
+										else
+											concat($url, 'id/', $id)"
+								/>
 							</xsl:apply-templates>
 						</xsl:if>
 					</xsl:when>
@@ -581,7 +609,7 @@
 							<foaf:thumbnail>
 								<xsl:attribute name="rdf:resource">
 									<xsl:choose>
-										<xsl:when test="contains(mets:FLocat/@xlink:href, 'http://')">
+										<xsl:when test="matches(mets:FLocat/@xlink:href, 'https?://')">
 											<xsl:value-of select="mets:FLocat/@xlink:href"/>
 										</xsl:when>
 										<xsl:otherwise>
@@ -595,7 +623,7 @@
 							<foaf:depiction>
 								<xsl:attribute name="rdf:resource">
 									<xsl:choose>
-										<xsl:when test="contains(mets:FLocat/@xlink:href, 'http://')">
+										<xsl:when test="matches(mets:FLocat/@xlink:href, 'https?://')">
 											<xsl:value-of select="mets:FLocat/@xlink:href"/>
 										</xsl:when>
 										<xsl:otherwise>
@@ -645,7 +673,7 @@
 
 	<xsl:template match="nuds:typeDesc" mode="nomisma">
 		<xsl:param name="id"/>
-		
+
 		<xsl:apply-templates select="nuds:objectType[@xlink:href]" mode="nomisma"/>
 
 		<xsl:apply-templates select="nuds:material | nuds:denomination | nuds:manufacture" mode="nomisma"/>
@@ -658,7 +686,7 @@
 			<nmo:hasReverse rdf:resource="{if (string($uri_space)) then concat($uri_space, $id) else concat($url, 'id/', $id)}#reverse"/>
 		</xsl:if>
 	</xsl:template>
-	
+
 	<xsl:template match="nuds:objectType" mode="nomisma">
 		<nmo:representsObjectType rdf:resource="{@xlink:href}"/>
 	</xsl:template>
@@ -719,9 +747,32 @@
 		<xsl:if test="string-length($element) &gt; 0">
 			<xsl:choose>
 				<xsl:when test="string(@xlink:href)">
-					<xsl:element name="nmo:{$element}">
-						<xsl:attribute name="rdf:resource" select="@xlink:href"/>
-					</xsl:element>
+
+					<!-- model uncertainty -->
+					<xsl:choose>
+						<xsl:when test="@certainty = 'uncertain' or matches(@certainty, 'https?://nomisma\.org')">
+							<xsl:element name="nmo:{$element}">
+								<rdf:Description>
+									<rdf:value rdf:resource="{@xlink:href}"/>
+									<un:hasUncertainty>
+										<xsl:attribute name="rdf:resource">
+											<xsl:choose>
+												<xsl:when test="@certainty = 'uncertain'">http://nomisma.org/id/uncertain_value</xsl:when>
+												<xsl:otherwise>
+													<xsl:value-of select="@certainty"/>
+												</xsl:otherwise>
+											</xsl:choose>
+										</xsl:attribute>
+									</un:hasUncertainty>
+								</rdf:Description>
+							</xsl:element>
+						</xsl:when>
+						<xsl:otherwise>
+							<xsl:element name="nmo:{$element}">
+								<xsl:attribute name="rdf:resource" select="@xlink:href"/>
+							</xsl:element>
+						</xsl:otherwise>
+					</xsl:choose>
 				</xsl:when>
 				<xsl:otherwise>
 					<xsl:element name="nmo:{$element}">
@@ -801,6 +852,15 @@
 		</xsl:if>
 
 	</xsl:template>
+	
+	<xsl:template match="nuds:note[@semantic]">
+		<xsl:element name="{@semantic}" >
+			<xsl:if test="@xml:lang">
+				<xsl:attribute name="xml:lang" select="@xml:lang"/>
+			</xsl:if>
+			<xsl:value-of select="."/>
+		</xsl:element>
+	</xsl:template>
 
 	<!-- PROCESS NUDS-HOARD RECORDS INTO NOMISMA/METIS COMPLIANT RDF MODELS -->
 	<xsl:template match="nh:nudsHoard" mode="nomisma">
@@ -822,7 +882,7 @@
 					</xsl:for-each>
 					<xsl:for-each select="descendant::*:otherRecordId[string(@semantic)]">
 						<xsl:variable name="uri" select="
-								if (contains(., 'http://')) then
+								if (matches(., 'https?://')) then
 									.
 								else
 									concat($url, 'id/', .)"/>
@@ -852,7 +912,7 @@
 					<!-- other ids -->
 					<xsl:for-each select="descendant::*:otherRecordId[string(@semantic)]">
 						<xsl:variable name="uri" select="
-								if (contains(., 'http://')) then
+								if (matches(., 'https?://')) then
 									.
 								else
 									concat($url, 'id/', .)"/>
@@ -1073,7 +1133,7 @@
 						<foaf:thumbnail>
 							<xsl:attribute name="rdf:resource">
 								<xsl:choose>
-									<xsl:when test="contains(mets:FLocat/@xlink:href, 'http://')">
+									<xsl:when test="matches(mets:FLocat/@xlink:href, 'https?://')">
 										<xsl:value-of select="mets:FLocat/@xlink:href"/>
 									</xsl:when>
 									<xsl:otherwise>
@@ -1087,7 +1147,7 @@
 						<foaf:depiction>
 							<xsl:attribute name="rdf:resource">
 								<xsl:choose>
-									<xsl:when test="contains(mets:FLocat/@xlink:href, 'http://')">
+									<xsl:when test="matches(mets:FLocat/@xlink:href, 'https?://')">
 										<xsl:value-of select="mets:FLocat/@xlink:href"/>
 									</xsl:when>
 									<xsl:otherwise>

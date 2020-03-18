@@ -42,7 +42,7 @@
 
 			<!-- only aggregate symbols with types when there are symbol URIs -->
 			<p:choose href="#symbols">
-				<p:when test="count(rdf:RDF/*) &gt; 0">
+				<p:when test="count(descendant::rdf:RDF/*) &gt; 0">
 					<!-- aggregate all NUDS documents and pipe through XSLT into RDF -->
 					<p:processor name="oxf:pipeline">
 						<p:input name="config" href="../models/xquery/aggregate-all.xpl"/>
@@ -69,7 +69,8 @@
 								xmlns:relations="http://pelagios.github.io/vocab/relations#" xmlns:foaf="http://xmlns.com/foaf/0.1/"
 								xmlns:xsd="http://www.w3.org/2001/XMLSchema#" xmlns:nmo="http://nomisma.org/ontology#"
 								xmlns:edm="http://www.europeana.eu/schemas/edm/" xmlns:svcs="http://rdfs.org/sioc/services#"
-								xmlns:doap="http://usefulinc.com/ns/doap#">
+								xmlns:doap="http://usefulinc.com/ns/doap#" xmlns:prov="http://www.w3.org/ns/prov#"
+								xmlns:crm="http://www.cidoc-crm.org/cidoc-crm/" xmlns:crmdig="http://www.ics.forth.gr/isl/CRMdig/">
 								<xsl:output indent="yes" encoding="UTF-8"/>
 								<xsl:strip-space elements="*"/>
 
@@ -135,7 +136,7 @@
 						<xsl:variable name="service">
 							<xsl:value-of
 								select="concat($solr-url, '?q=collection-name:', $collection-name,
-								'+AND+NOT(lang:*)+AND+coinType_uri:*&amp;rows=10000&amp;start=', $start, '&amp;fl=id,recordId,title_display,coinType_uri,objectType_uri,recordType,publisher_display,axis_num,diameter_num,height_num,width_num,taq_num,weight_num,thumbnail_obv,reference_obv,thumbnail_rev,reference_rev,iiif_obv,iiif_rev,findspot_uri,findspot_geo,collection_uri,hoard_uri&amp;mode=nomisma')"
+								'+AND+NOT(lang:*)+AND+coinType_uri:*+AND+NOT(typeUncertain:true)&amp;rows=10000&amp;start=', $start, '&amp;fl=id,recordId,title_display,coinType_uri,objectType_uri,recordType,publisher_display,axis_num,diameter_num,height_num,width_num,taq_num,weight_num,thumbnail_obv,reference_obv,thumbnail_rev,reference_rev,iiif_obv,iiif_rev,findspot_uri,findspot_geo,collection_uri,hoard_uri&amp;mode=nomisma')"
 							/>
 						</xsl:variable>
 

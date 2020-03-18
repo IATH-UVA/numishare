@@ -21,16 +21,6 @@
 			</xsl:when>
 		</xsl:choose>
 	</xsl:param>
-	<xsl:variable name="object-path">
-		<xsl:choose>
-			<xsl:when test="//config/collection_type = 'object' and string(//config/uri_space)">
-				<xsl:value-of select="//config/uri_space"/>
-			</xsl:when>
-			<xsl:otherwise>
-				<xsl:value-of select="concat($display_path, 'id/')"/>
-			</xsl:otherwise>
-		</xsl:choose>
-	</xsl:variable>
 	
 	<xsl:param name="q" select="doc('input:request')/request/parameters/parameter[name='q']/value"/>
 	<xsl:param name="sort" select="doc('input:request')/request/parameters/parameter[name='sort']/value"/>
@@ -61,21 +51,11 @@
 
 	<!-- config variables -->
 	<xsl:variable name="collection_type" select="/content/config/collection_type"/>
-	<xsl:variable name="sparql_endpoint" select="/content/config/sparql_endpoint"/>
 	<xsl:variable name="url" select="/content/config/url"/>
 	<xsl:variable name="positions" as="node()*">
 		<config>
 			<xsl:copy-of select="/content/config/positions"/>
 		</config>
-	</xsl:variable>
-
-	<!-- get block of images from SPARQL endpoint, via nomisma API -->
-	<xsl:variable name="sparqlResult" as="element()*">
-		<xsl:if test="string($sparql_endpoint) and //config/collection_type='cointype'">
-			<xsl:variable name="service" select="concat('http://nomisma.org/apis/numishareResults?identifiers=', encode-for-uri(string-join(descendant::str[@name='recordId'], '|')), '&amp;baseUri=',
-				encode-for-uri(/content/config/uri_space))"/>
-			<xsl:copy-of select="document($service)/response"/>
-		</xsl:if>
 	</xsl:variable>
 
 	<xsl:template match="/">
@@ -125,10 +105,10 @@
 					</xsl:choose>
 				</xsl:for-each>
 
-				<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"/>
+				<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"/>
 				<!-- bootstrap -->
-				<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"/>
-				<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"/>
+				<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+				<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"/>
 				<script type="text/javascript" src="{$include_path}/javascript/bootstrap-multiselect.js"/>
 				<link rel="stylesheet" href="{$include_path}/css/bootstrap-multiselect.css" type="text/css"/>
 				<link type="text/css" href="{$include_path}/css/style.css" rel="stylesheet"/>
@@ -143,12 +123,12 @@
 				<!-- call mapping information -->
 				<xsl:if test="count(//lst[contains(@name, '_geo')]/int) &gt; 0">
 					<!-- maps-->
-					<link rel="stylesheet" href="https://unpkg.com/leaflet@0.7.7/dist/leaflet.css"/>
+					<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css"/>
 					<link rel="stylesheet" href="{$include_path}/css/MarkerCluster.css"/>
 					<link rel="stylesheet" href="{$include_path}/css/MarkerCluster.Default.css"/>
 					
 					<!-- js -->
-					<script src="https://unpkg.com/leaflet@0.7.7/dist/leaflet.js"/>					
+					<script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"/>					
 					<script type="text/javascript" src="{$include_path}/javascript/leaflet.ajax.min.js"/>
 					<script type="text/javascript" src="{$include_path}/javascript/leaflet.markercluster.js"/>
 					<script type="text/javascript" src="{$include_path}/javascript/result_map_functions.js"/>
@@ -173,17 +153,14 @@
 	</xsl:template>
 
 	<xsl:template name="results">
-		<!--<xsl:copy-of select="$sparqlResult"/>-->
 		<div class="container-fluid">
-			<!--<xsl:copy-of select="doc('input:request')"/>-->
-
 			<xsl:if test="$lang='ar'">
 				<xsl:attribute name="style">direction: rtl;</xsl:attribute>
 			</xsl:if>
 			
 			<div class="row">
 				<div class="col-md-9 col-md-push-3">
-					<div class="container-fluid">					
+					<div class="container-fluid">
 						<xsl:call-template name="remove_facets"/>
 						<xsl:choose>
 							<xsl:when test="$numFound &gt; 0">
@@ -287,7 +264,7 @@
 								<!-- the image below is copyright of Silvestre Herrera, available freely on wikimedia commons: http://commons.wikimedia.org/wiki/File:X-office-spreadsheet_Gion.svg -->
 								<img src="{$include_path}/images/spreadsheet.png" title="CSV" alt="CSV"/>
 							</a>
-							<a href="{$display_path}visualize?compare={substring-after($query, 'q=')}">
+							<a href="{$display_path}visualize?compare={if (string($q)) then substring-after($query, 'q=') else '*:*'}">
 								<!-- the image below is copyright of Mark James, available freely on wikimedia commons: http://commons.wikimedia.org/wiki/File:Chart_bar.png -->
 								<img src="{$include_path}/images/visualize.png" title="Visualize" alt="Visualize"/>
 							</a>

@@ -26,22 +26,57 @@
 
 	<xsl:variable name="nudsGroup" as="element()*">
 		<nudsGroup>
-			<xsl:choose>
-				<xsl:when test="descendant::nuds:typeDesc[string(@xlink:href)]">
-					<xsl:variable name="uri" select="descendant::nuds:typeDesc/@xlink:href"/>
+			<xsl:variable name="type_list" as="element()*">
+				<list>
+					<xsl:for-each
+						select="distinct-values(descendant::nuds:typeDesc[string(@xlink:href)]/@xlink:href | descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][string(@xlink:href)]/@xlink:href)">
+						<type_series_item>
+							<xsl:if test="contains(., '/id/')">
+								<xsl:attribute name="type_series" select="substring-before(., 'id/')"/>
+							</xsl:if>
 
-					<object xlink:href="{$uri}">
-						<xsl:if test="doc-available(concat($uri, '.xml'))">
-							<xsl:copy-of select="document(concat($uri, '.xml'))/nuds:nuds"/>
+							<xsl:value-of select="."/>
+						</type_series_item>
+					</xsl:for-each>
+				</list>
+			</xsl:variable>
+
+			<xsl:for-each select="distinct-values($type_list//type_series_item/@type_series)">
+				<xsl:variable name="type_series_uri" select="."/>
+
+				<xsl:variable name="id-param">
+					<xsl:for-each select="$type_list//type_series_item[contains(., $type_series_uri)]">
+						<xsl:value-of select="substring-after(., 'id/')"/>
+						<xsl:if test="not(position() = last())">
+							<xsl:text>|</xsl:text>
 						</xsl:if>
-					</object>
-				</xsl:when>
-				<xsl:otherwise>
-					<object>
-						<xsl:copy-of select="descendant::nuds:typeDesc"/>
-					</object>
-				</xsl:otherwise>
-			</xsl:choose>
+					</xsl:for-each>
+				</xsl:variable>
+
+				<xsl:if test="string-length($id-param) &gt; 0">
+					<xsl:for-each select="document(concat($type_series_uri, 'apis/getNuds?identifiers=', encode-for-uri($id-param)))//nuds:nuds">
+						<object xlink:href="{$type_series_uri}id/{nuds:control/nuds:recordId}">
+							<xsl:copy-of select="."/>
+						</object>
+					</xsl:for-each>
+				</xsl:if>
+			</xsl:for-each>
+
+			<!-- include individual REST calls for URIs not in a recognized, Numishare based id/ namespace -->
+			<xsl:for-each select="$type_list//type_series_item[not(@type_series)]">
+				<xsl:variable name="uri" select="."/>
+
+				<xsl:call-template name="numishare:getNudsDocument">
+					<xsl:with-param name="uri" select="$uri"/>
+				</xsl:call-template>
+			</xsl:for-each>
+
+			<!-- get typeDesc -->
+			<xsl:for-each select="descendant::nuds:typeDesc[not(string(@xlink:href))]">
+				<object>
+					<xsl:copy-of select="."/>
+				</object>
+			</xsl:for-each>
 		</nudsGroup>
 	</xsl:variable>
 
@@ -95,10 +130,10 @@
 		<id>
 			<xsl:value-of select="$objectUri"/>
 		</id>
-		<type>ManMadeObject</type>
-		<label>
+		<type>HumanMadeObject</type>
+		<_label>
 			<xsl:value-of select="//nuds:descMeta/nuds:title[@xml:lang = 'en']"/>
-		</label>
+		</_label>
 
 		<xsl:apply-templates select="nuds:descMeta"/>
 
@@ -130,19 +165,21 @@
 
 		<xsl:apply-templates select="nuds:physDesc"/>
 		<xsl:apply-templates select="$nudsGroup//nuds:typeDesc"/>
+
+		<xsl:apply-templates select="nuds:adminDesc/nuds:collection"/>
 	</xsl:template>
 
 	<xsl:template match="nuds:title">
 		<_object>
 			<type>Name</type>
-			<value>
-				<xsl:value-of select="."/>
-			</value>
+			<content>
+				<xsl:value-of select="normalize-space(.)"/>
+			</content>
 			<classified_as>
 				<_array>
 					<_object>
 						<id>aat:300404670</id>
-						<label>preferred forms</label>
+						<_label>preferred forms</_label>
 						<type>Type</type>
 					</_object>
 				</_array>
@@ -155,20 +192,42 @@
 		<classified_as>
 			<_array>
 				<_object>
-					<id>aat:300133025</id>
+					<id>aat:300387350</id>
 					<type>Type</type>
-					<label>works of art</label>
+					<_label>exchange media</_label>
+					<classified_as>
+						<_array>
+							<_object>
+								<id>aat:300264092</id>
+								<type>Type</type>
+								<_label>Objects Facet</_label>
+							</_object>
+						</_array>
+					</classified_as>
 				</_object>
 
-				<xsl:apply-templates select="nuds:objectType[@xlink:href] | nuds:denomination[@xlink:href]"/>
+				<xsl:apply-templates select="nuds:denomination[@xlink:href] | nuds:objectType[@xlink:href]"/>
 
-				<xsl:for-each select="$coinType_uris/uri">
+				<xsl:for-each select="distinct-values($coinType_uris/uri)">
+					<xsl:variable name="uri" select="."/>
+
 					<_object>
 						<id>
-							<xsl:value-of select="."/>
+							<xsl:value-of select="$uri"/>
 						</id>
 						<type>Type</type>
-						<label>coin type</label>
+						<_label>
+							<xsl:value-of select="$nudsGroup//object[@xlink:href = $uri]//nuds:descMeta/nuds:title[@xml:lang = 'en']"/>
+						</_label>
+						<classified_as>
+							<_array>
+								<_object>
+									<id>aat:300067209</id>
+									<type>Type</type>
+									<_label>typology</_label>
+								</_object>
+							</_array>
+						</classified_as>
 					</_object>
 				</xsl:for-each>
 			</_array>
@@ -202,6 +261,18 @@
 					<timespan>
 						<_object>
 							<type>TimeSpan</type>
+							<_label>
+								<xsl:choose>
+									<xsl:when test="nuds:date">
+										<xsl:value-of select="nuds:date"/>
+									</xsl:when>
+									<xsl:otherwise>
+										<xsl:value-of select="nuds:dateRange/nuds:fromDate"/>
+										<xsl:text> - </xsl:text>
+										<xsl:value-of select="nuds:dateRange/nuds:toDate"/>
+									</xsl:otherwise>
+								</xsl:choose>
+							</_label>
 							<begin_of_the_begin>
 								<xsl:value-of select="numishare:expandDatetoDateTime($fromDate)"/>
 							</begin_of_the_begin>
@@ -227,11 +298,11 @@
 
 		<!-- parts -->
 		<xsl:if test="nuds:obverse or nuds:reverse">
-			<parts>
+			<part>
 				<_array>
 					<xsl:apply-templates select="nuds:obverse | nuds:reverse"/>
 				</_array>
-			</parts>
+			</part>
 		</xsl:if>
 	</xsl:template>
 
@@ -274,45 +345,69 @@
 					<xsl:otherwise>Type</xsl:otherwise>
 				</xsl:choose>
 			</type>
-			<label>
+			<_label>
 				<xsl:value-of select="."/>
-			</label>
-			<xsl:if test="@xlink:role[not(. = 'region') and not(. = 'statedAuthority')]">
-				<classified_as>
-					<_array>
-						<_object>
-							<type>Type</type>
-							<xsl:choose>
-								<xsl:when test="@xlink:role = 'authority'">
-									<xsl:choose>
-										<xsl:when test="self::nuds:persname">
-											<id>aat:300025475</id>
-											<label>rulers (people)</label>
-										</xsl:when>
-										<xsl:when test="self::nuds:corpname">
-											<id>aat:300232420</id>
-											<label>sovereign states</label>
-										</xsl:when>
-									</xsl:choose>
-								</xsl:when>
-								<xsl:when test="@xlink:role = 'dynasty'">
-									<id>aat:300386176</id>
-									<label>dynasties</label>
-								</xsl:when>
-								<xsl:when test="@xlink:role = 'issuer'">
-									<id>aat:300025467</id>
-									<label>magistrates</label>
-								</xsl:when>
-								<xsl:when test="@xlink:role = 'mint'">
-									<id>aat:300006031</id>
-									<label>mints (buildings)</label>
-								</xsl:when>
-							</xsl:choose>
-
-						</_object>
-					</_array>
-				</classified_as>
-			</xsl:if>
+			</_label>
+			
+			<xsl:choose>
+				<xsl:when test="local-name() = 'denomination'">
+					<part_of>aat:300037222</part_of>
+				</xsl:when>
+				<xsl:when test="local-name() = 'objectType'">
+					<part_of>aat:300387350</part_of>
+				</xsl:when>
+			</xsl:choose>
+			
+			
+			<xsl:choose>
+				<xsl:when test="local-name() = 'denomination' or local-name()='objectType'">
+					<classified_as>
+						<_array>
+							<_object>
+								<id>aat:300264092</id>
+								<type>Type</type>
+								<_label>Objects Facet</_label>
+							</_object>
+						</_array>
+					</classified_as>
+				</xsl:when>
+				<xsl:when test="@xlink:role[not(. = 'region') and not(. = 'statedAuthority')]">
+					<classified_as>
+						<_array>
+							<_object>
+								<type>Type</type>
+								<xsl:choose>
+									<xsl:when test="@xlink:role = 'authority'">
+										<xsl:choose>
+											<xsl:when test="self::nuds:persname">
+												<id>aat:300025475</id>
+												<_label>rulers (people)</_label>
+											</xsl:when>
+											<xsl:when test="self::nuds:corpname">
+												<id>aat:300232420</id>
+												<_label>sovereign states</_label>
+											</xsl:when>
+										</xsl:choose>
+									</xsl:when>
+									<xsl:when test="@xlink:role = 'dynasty'">
+										<id>aat:300386176</id>
+										<_label>dynasties</_label>
+									</xsl:when>
+									<xsl:when test="@xlink:role = 'issuer'">
+										<id>aat:300025467</id>
+										<_label>magistrates</_label>
+									</xsl:when>
+									<xsl:when test="@xlink:role = 'mint'">
+										<id>aat:300006031</id>
+										<_label>mints (buildings)</_label>
+									</xsl:when>								
+								</xsl:choose>
+								
+							</_object>
+						</_array>
+					</classified_as>
+				</xsl:when>
+			</xsl:choose>
 		</_object>
 	</xsl:template>
 
@@ -323,10 +418,10 @@
 			<id>
 				<xsl:value-of select="concat($objectUri, '#', $side)"/>
 			</id>
-			<type>ManMadeObject</type>
-			<label>
+			<type>HumanMadeObject</type>
+			<_label>
 				<xsl:value-of select="concat(upper-case(substring($side, 1, 1)), substring($side, 2))"/>
-			</label>
+			</_label>
 			<classified_as>
 				<_array>
 					<_object>
@@ -334,9 +429,13 @@
 							<xsl:value-of select="numishare:normalizeClassification($side)"/>
 						</id>
 						<type>Type</type>
-						<label>
-							<xsl:value-of select="concat(local-name(), 's')"/>
-						</label>
+						<_label>
+							<xsl:value-of select="
+									if (local-name() = 'obverse') then
+										'fronts'
+									else
+										'backs'"/>
+						</_label>
 					</_object>
 				</_array>
 			</classified_as>
@@ -369,9 +468,9 @@
 			<_array>
 				<_object>
 					<type>LinguisticObject</type>
-					<value>
-						<xsl:value-of select="."/>
-					</value>
+					<content>
+						<xsl:value-of select="normalize-space(.)"/>
+					</content>
 				</_object>
 			</_array>
 		</carries>
@@ -389,15 +488,15 @@
 	<xsl:template match="nuds:description">
 		<_object>
 			<type>LinguisticObject</type>
-			<value>
-				<xsl:value-of select="."/>
-			</value>
+			<content>
+				<xsl:value-of select="normalize-space(.)"/>
+			</content>
 			<classified_as>
 				<_array>
 					<_object>
 						<id>aat:300080091</id>
 						<type>Type</type>
-						<label>description (activity)</label>
+						<_label>description (activity)</_label>
 					</_object>
 
 				</_array>
@@ -418,9 +517,9 @@
 					<xsl:otherwise>Person</xsl:otherwise>
 				</xsl:choose>
 			</type>
-			<label>
+			<_label>
 				<xsl:value-of select="."/>
-			</label>
+			</_label>
 			<classified_as>
 				<_array>
 					<_object>
@@ -431,12 +530,12 @@
 							</xsl:choose>
 						</id>
 						<type>Type</type>
-						<label>
+						<_label>
 							<xsl:choose>
 								<xsl:when test="@xlink:role = 'deity'">figures (representations)</xsl:when>
 								<xsl:otherwise>portraits</xsl:otherwise>
 							</xsl:choose>
-						</label>
+						</_label>
 					</_object>
 				</_array>
 			</classified_as>
@@ -466,7 +565,7 @@
 						<xsl:value-of select="."/>
 					</xsl:when>
 					<xsl:when test=". castable as xs:decimal">
-						<xsl:value-of select='format-number(., "0.00")' />
+						<xsl:value-of select='format-number(., "0.00")'/>
 					</xsl:when>
 				</xsl:choose>
 			</value>
@@ -477,24 +576,37 @@
 							<xsl:value-of select="numishare:normalizeClassification(local-name())"/>
 						</id>
 						<type>Type</type>
-						<label>
+						<_label>
 							<xsl:choose>
 								<xsl:when test="self::nuds:axis">die axis</xsl:when>
+								<xsl:when test="self::nuds:thickness">depth</xsl:when>
 								<xsl:otherwise>
 									<xsl:value-of select="local-name()"/>
 								</xsl:otherwise>
 							</xsl:choose>
-						</label>
+						</_label>
 					</_object>
 				</_array>
 			</classified_as>
 			<xsl:choose>
 				<xsl:when test="self::nuds:diameter or self::nuds:height or self::nuds:width or self::nuds:thickness">
-					<unit>aat:300379097</unit>
+					<unit>
+						<_object>
+							<id>aat:300379097</id>
+							<type>Type</type>
+							<_label>millimeters</_label>
+						</_object>
+					</unit>
 				</xsl:when>
 
 				<xsl:when test="self::nuds:weight">
-					<unit>aat:300379225</unit>
+					<unit>
+						<_object>
+							<id>aat:300379225</id>
+							<type>Type</type>
+							<_label>grams</_label>
+						</_object>
+					</unit>
 				</xsl:when>
 			</xsl:choose>
 		</_object>
@@ -504,9 +616,9 @@
 	<xsl:template match="nuds:identifier">
 		<_object>
 			<type>Identifier</type>
-			<value>
-				<xsl:value-of select="."/>
-			</value>
+			<content>
+				<xsl:value-of select="normalize-space(.)"/>
+			</content>
 			<classified_as>
 				<_array>
 					<_object>
@@ -514,11 +626,37 @@
 							<xsl:value-of select="numishare:normalizeClassification(local-name())"/>
 						</id>
 						<type>Type</type>
-						<label>accession numbers</label>
+						<_label>accession numbers</_label>
 					</_object>
 				</_array>
 			</classified_as>
 		</_object>
+	</xsl:template>
+
+	<xsl:template match="nuds:collection">
+		<xsl:variable name="uri" select="@xlink:href"/>
+
+		<current_owner>
+			<_object>
+				<id>
+					<xsl:value-of select="numishare:resolveUriToCurie($uri, $rdf//*[@rdf:about = $uri])"/>
+				</id>
+				<type>Group</type>
+				<_label>
+					<xsl:value-of select="."/>
+				</_label>
+				<!--<classified_as>
+					<_array>
+						<_object>
+							<id/>
+							<type>Type</type>
+							<_label/>
+						</_object>
+					</_array>
+				</classified_as>-->
+			</_object>
+		</current_owner>
+
 	</xsl:template>
 
 	<!-- ***** Digitial representations ***** -->
@@ -538,11 +676,11 @@
 			<type>VisualItem</type>
 			<xsl:choose>
 				<xsl:when test="@USE = 'iiif'">
-					<label>IIIF Image API</label>
+					<_label>IIIF Image API</_label>
 					<conforms_to>http://iiif.io/api/image</conforms_to>
 				</xsl:when>
 				<xsl:otherwise>
-					<label>Digital Image</label>
+					<_label>Digital Image</_label>
 					<xsl:if test="@MIMETYPE">
 						<format>
 							<xsl:value-of select="@MIMETYPE"/>
@@ -553,7 +691,7 @@
 							<_object>
 								<id>aat:300215302</id>
 								<type>Type</type>
-								<label>digital images</label>
+								<_label>digital images</_label>
 							</_object>
 						</_array>
 					</classified_as>

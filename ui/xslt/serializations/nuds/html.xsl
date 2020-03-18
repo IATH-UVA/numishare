@@ -38,7 +38,7 @@
 	<xsl:param name="mode" select="doc('input:request')/request/parameters/parameter[name = 'mode']/value"/>
 	<xsl:param name="pipeline">display</xsl:param>
 
-	<!-- pagination parameter for iterating through pages of physical speciments -->
+	<!-- pagination parameter for iterating through pages of physical specimens -->
 	<xsl:param name="page" as="xs:integer">
 		<xsl:choose>
 			<xsl:when
@@ -109,11 +109,22 @@
 				<xsl:when test="descendant::nuds:typeDesc[string(@xlink:href)]">
 					<xsl:variable name="uri" select="descendant::nuds:typeDesc/@xlink:href"/>
 
-					<object xlink:href="{$uri}">
-						<xsl:if test="doc-available(concat($uri, '.xml'))">
-							<xsl:copy-of select="document(concat($uri, '.xml'))/nuds:nuds"/>
-						</xsl:if>
+					<xsl:call-template name="numishare:getNudsDocument">
+						<xsl:with-param name="uri" select="$uri"/>
+					</xsl:call-template>
+				</xsl:when>
+				<xsl:when test="descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][string(@xlink:href)]">
+					<object>
+						<xsl:copy-of select="descendant::nuds:typeDesc"/>
 					</object>
+
+					<xsl:for-each select="descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][string(@xlink:href)]">
+						<xsl:variable name="uri" select="@xlink:href"/>
+
+						<xsl:call-template name="numishare:getNudsDocument">
+							<xsl:with-param name="uri" select="$uri"/>
+						</xsl:call-template>
+					</xsl:for-each>
 				</xsl:when>
 				<xsl:when test="descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][string(@xlink:href)]">
 					<object>
@@ -273,7 +284,7 @@
 										<xsl:for-each select="descendant::*:otherRecordId[@semantic = 'dcterms:isReplacedBy']">
 											<xsl:variable name="uri"
 												select="
-													if (contains(., 'http://')) then
+													if (matches(., 'https?://')) then
 														.
 													else
 														concat($url, 'id/', .)"/>
@@ -949,7 +960,7 @@
 	</xsl:template>
 
 	<xsl:template match="nuds:findspotDesc">
-		<div class="metadata_section">
+		<div class="metadata_section" id="findspot">
 			<h3>
 				<xsl:value-of select="numishare:regularize_node(local-name(), $lang)"/>
 			</h3>
@@ -1206,7 +1217,7 @@
 			<xsl:variable name="src" select="//mets:fileGrp[@USE = 'legend']/mets:file[@USE = 'reference']/mets:FLocat/@xlink:href"/>
 
 			<div class="reference_image">
-				<img src="{if (contains($src, 'http://')) then $src else concat($display_path, $src)}" alt="legend"/>
+				<img src="{if (matches($src, 'https?://')) then $src else concat($display_path, $src)}" alt="legend"/>
 			</div>
 		</xsl:if>
 	</xsl:template>

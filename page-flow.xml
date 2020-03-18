@@ -5,14 +5,14 @@
 	***************** -->	
 	<page path="/numishare/admin/" view="xforms/admin.xhtml" id="admin"/>	
 	<page path="/numishare/admin/symbols/" view="xforms/symbols.xhtml"/>
+	<page path="/numishare/admin/import/symbol/" view="xforms/import-symbols.xhtml"/>
 	<page path="/numishare/admin/edit/coin/" view="xforms/nuds.xhtml"/>
 	<page path="/numishare/admin/edit/symbol/" view="xforms/edit-symbol.xhtml"/>
-	<!--<page path="/numishare/admin/edit/object/" view="xforms/vra.xhtml"/>-->	
 	<page path="/numishare/admin/edit/settings/" view="xforms/settings.xhtml"/>
 	<page path="/numishare/admin/edit/page/" view="xforms/page.xhtml"/>	
 	<page path="/numishare/admin/pages/" view="xforms/pages.xhtml"/>
-	<!--<page path="/numishare/admin/imports/new/" view="xforms/import-csv.xhtml"/>
-	<page path="/numishare/admin/imports/" view="xforms/manage-imports.xhtml"/>-->	
+	<!--<page path="/numishare/admin/imports/new/" view="xforms/import-csv.xhtml"/>-->
+	<page path="/numishare/admin/import/" view="xforms/import.xhtml"/>	
 	<page path="/numishare/admin/templates/" view="xforms/templates.xhtml"/>	
 	<page path="/numishare/admin/theme/layout/" view="xforms/layout.xhtml"/>	
 	
@@ -29,10 +29,12 @@
 	***************** -->
 	<!-- *** For multiple projects that employ different XSLT, JS, or CSS:
 		Serializations and Pages should be copied and pasted above the generic regex pages, with models and views given absolute paths with the file:// protocol, e.g.,
-		<page path="/numishare/project1/" matcher="oxf:perl5-matcher" model="xpl/models/config.xpl" view="file:///usr/local/projects/project1/xpl/views/pages/index.xpl"/>
+		<page path="/numishare/project1/" matcher="oxf:perl5-matcher" model="xpl/models/config.xpl" view="oxf:/numishare-projects/project1/xpl/views/pages/index.xpl"/>
 		Model paths are unlikely to require changing. Other ajax pages may need to be copied if alterations in format are required.
 	*** -->
-
+	
+	<!-- ************** PROJECT NUMISHARE PAGES *************-->	
+	
 	<!-- 303 See Other redirect for original display-uva pipeline -->
 	<page path="/numishare/[^\/]+/display-uva$" model="xpl/models/config.xpl"  view="xpl/controllers/display-uva.xpl"/>
 
@@ -52,12 +54,13 @@
 	<page path="/numishare/[^\/]+/id/(.*)\.solr" model="xpl/models/object/get-id.xpl" view="xpl/views/serializations/object/solr.xpl"/>	
 	<page path="/numishare/[^\/]+/id/(.*)$" model="xpl/models/object/get-id.xpl" view="xpl/controllers/conneg-id.xpl"/>
 	<page path="/numishare/[^\/]+/map/(.*)" model="xpl/models/object/get-id.xpl" view="xpl/views/serializations/object/html-map.xpl"/>
+	
+	<!-- IIIF manifest pipelines -->
 	<page path="/numishare/[^\/]+/manifest/(.*)$" model="xpl/models/object/get-id.xpl" view="xpl/controllers/iiif-manifest.xpl"/>
 	<page path="/numishare/[^\/]+/manifest/[obverse?|reverse?]/?(.*)$" model="xpl/models/object/get-id.xpl" view="xpl/controllers/iiif-manifest.xpl"/>
 	<page path="/numishare/[^\/]+/manifest/(.*)/sequence/default$" model="xpl/models/object/get-id.xpl" view="xpl/controllers/iiif-manifest.xpl"/>
 	<page path="/numishare/[^\/]+/manifest/(.*)/canvas/[obverse|reverse]$" model="xpl/models/object/get-id.xpl" view="xpl/controllers/iiif-manifest.xpl"/>
 	<page path="/numishare/[^\/]+/manifest/(.*)/annotation/[obverse|reverse]$" model="xpl/models/object/get-id.xpl" view="xpl/controllers/iiif-manifest.xpl"/>
-	
 	
 	<!-- symbols -->	
 	<page path="/numishare/[^\/]+/symbol/(.*)\.rdf" view="xpl/models/symbol/get.xpl"/>
@@ -76,16 +79,24 @@
 	<page path="/numishare/[^\/]+/identify" model="xpl/models/portraits.xpl" view="xpl/views/pages/identify.xpl"/>
 	<page path="/numishare/[^\/]+/pages/(.*)" model="xpl/models/config.xpl" view="xpl/views/pages/pages.xpl"/>
 	<page path="/numishare/[^\/]+/search" model="xpl/models/solr/search.xpl" view="xpl/views/pages/search.xpl"/>
-	<page path="/numishare/[^\/]+/symbols" model="xpl/models/xquery/aggregate-symbols.xpl" view="xpl/views/pages/symbols.xpl"/>
+	<page path="/numishare/[^\/]+/symbols" model="xpl/models/xquery/get-symbols.xpl" view="xpl/views/pages/symbols.xpl"/>
 	<page path="/numishare/[^\/]+/visualize" model="xpl/models/solr/search.xpl" view="xpl/views/pages/visualize.xpl"/>
+	<page path="/numishare/[^\/]+/feedback" model="xpl/models/config.xpl" view="xpl/views/pages/feedback.xpl"/>
+	<page path="/numishare/[^\/]+/feedback-form" view="xforms/feedback.xhtml"/>
 	<page path="/numishare/[^\/]+/" model="xpl/models/config.xpl" view="xpl/views/pages/index.xpl"/>
+	
+	<page path="/numishare/[^\/]+/visualize/distribution" view="xpl/views/pages/vis.xpl"/>
+	<page path="/numishare/[^\/]+/visualize/metrical" view="xpl/views/pages/vis.xpl"/>
 	
 	<!-- **** APIs **** -->
 	<page path="/numishare/[^\/]+/apis/get" model="xpl/models/object/get-id.xpl" view="xpl/views/apis/get.xpl"/>	
 	<page path="/numishare/[^\/]+/apis/getNuds" view="xpl/models/xquery/aggregate-ids.xpl"/>
 	<page path="/numishare/[^\/]+/apis/getRDF" model="xpl/models/xquery/aggregate-ids.xpl" view="xpl/views/serializations/object/rdf.xpl"/>
 	<page path="/numishare/[^\/]+/apis/search" model="xpl/models/solr/feed.xpl" view="xpl/views/apis/search.xpl"/>
-	<page path="/numishare/[^\/]+/apis/type-examples" model="xpl/models/config.xpl" view="xpl/models/sparql/type-examples.xpl"/>	
+	<page path="/numishare/[^\/]+/apis/type-examples" model="xpl/models/config.xpl" view="xpl/models/sparql/type-examples.xpl"/>
+	<page path="/numishare/[^\/]+/apis/getDistribution" model="xpl/models/sparql/getDistribution.xpl" view="xpl/controllers/sparql/visualization.xpl"/>
+	<page path="/numishare/[^\/]+/apis/getMetrical" model="xpl/models/sparql/getMetrical.xpl" view="xpl/controllers/sparql/visualization.xpl"/>
+	<page path="/numishare/[^\/]+/apis/getDateRange" model="xpl/models/sparql/getDateRange.xpl" view="xpl/views/serializations/sparql/getDateRange.xpl"/>
 	<page path="/numishare/[^\/]+/apis/getDistribution" model="xpl/models/sparql/getDistribution.xpl" view="xpl/controllers/sparql/visualization.xpl"/>
 	<page path="/numishare/[^\/]+/apis/getMetrical" model="xpl/models/sparql/getMetrical.xpl" view="xpl/controllers/sparql/visualization.xpl"/>
 	<page path="/numishare/[^\/]+/apis/getSolrDistribution" model="xpl/models/solr/getDistribution.xpl" view="xpl/controllers/sparql/visualization.xpl"/>
@@ -134,6 +145,8 @@
 	<page path="/numishare/[^\/]+/get_search_facets" model="xpl/models/solr/get_search_facets.xpl" view="xpl/views/ajax/get_search_facets.xpl"/>	
 	<page path="/numishare/[^\/]+/get_subtypes" view="xpl/models/xquery/get-subtypes.xpl"/>
 	<page path="/numishare/[^\/]+/results_ajax" model="xpl/models/solr/results_ajax.xpl" view="xpl/views/ajax/results_ajax.xpl"/>
+	<page path="/numishare/[^\/]+/ajax/getSparqlFacets" model="xpl/models/sparql/getSparqlFacets.xpl" view="xpl/views/serializations/sparql/getSparqlFacets.xpl"/>
+	
 	
 	<!-- **** SPARQL WIDGET **** -->
 	<page path="/numishare/[^\/]+/sparql" model="xpl/models/sparql/widget.xpl" view="xpl/views/serializations/sparql/widget.xpl"/>	

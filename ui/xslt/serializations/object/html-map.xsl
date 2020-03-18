@@ -51,11 +51,9 @@
 				<xsl:when test="descendant::nuds:typeDesc[string(@xlink:href)]">
 					<xsl:variable name="uri" select="descendant::nuds:typeDesc/@xlink:href"/>
 
-					<object xlink:href="{$uri}">
-						<xsl:if test="doc-available(concat($uri, '.xml'))">
-							<xsl:copy-of select="document(concat($uri, '.xml'))/nuds:nuds"/>
-						</xsl:if>
-					</object>
+					<xsl:call-template name="numishare:getNudsDocument">
+						<xsl:with-param name="uri" select="$uri"/>
+					</xsl:call-template>
 				</xsl:when>
 				<xsl:otherwise>
 					<object>
@@ -112,7 +110,7 @@
 										<xsl:for-each select="descendant::*:otherRecordId[@semantic = 'dcterms:isReplacedBy']">
 											<xsl:variable name="uri"
 												select="
-													if (contains(., 'http://')) then
+													if (matches(., 'https?://')) then
 														.
 													else
 														concat($url, 'id/', .)"/>
@@ -301,7 +299,7 @@
 		</title>
 		<!-- CSS -->
 		<link rel="shortcut icon" type="image/x-icon" href="{$include_path}/images/favicon.png"/>
-		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"/>
+		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1"/>
 		
 		<xsl:for-each select="//config/includes/include">
@@ -316,8 +314,8 @@
 		</xsl:for-each>
 		
 		<!-- bootstrap -->
-		<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"/>
-		<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"/>
+		<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+		<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"/>
 		<link type="text/css" href="{$include_path}/css/fullscreen.css" rel="stylesheet"/>
 		<xsl:if test="string(//config/google_analytics)">
 			<script type="text/javascript">
@@ -325,8 +323,8 @@
 			</script>
 		</xsl:if>
 
-		<link rel="stylesheet" href="https://unpkg.com/leaflet@0.7.7/dist/leaflet.css"/>
-		<script src="https://unpkg.com/leaflet@0.7.7/dist/leaflet.js"/>
+		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css"/>
+		<script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"/>
 		<script type="text/javascript" src="{$include_path}/javascript/leaflet.ajax.min.js"/>
 	</xsl:template>
 </xsl:stylesheet>
