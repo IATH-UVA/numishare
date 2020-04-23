@@ -153,7 +153,10 @@
 								
 								<xsl:choose>
 									<xsl:when test="$nudsGroup//object[@xlink:href = $uri]">
-										<xsl:value-of select="$nudsGroup//object[@xlink:href = $uri]//nuds:title[if (@xml:lang = $lang) then (@xml:lang = $lang) else 'en']"/>
+										<xsl:value-of select="$nudsGroup//object[@xlink:href = $uri]/descendant::nuds:descMeta/nuds:title[if (@xml:lang = $lang) then
+											(@xml:lang = $lang)
+											else
+											'en']"/>
 									</xsl:when>
 									<xsl:otherwise>
 										<xsl:value-of select="normalize-space(.)"/>
