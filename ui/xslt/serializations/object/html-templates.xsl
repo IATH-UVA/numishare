@@ -153,21 +153,7 @@
 								
 								<xsl:choose>
 									<xsl:when test="$nudsGroup//object[@xlink:href = $uri]">
-										<xsl:choose>
-											<xsl:when test="$lang">
-												<xsl:value-of select="$nudsGroup//object[@xlink:href = $uri]//nuds:title[@xml:lang = $lang]"/>
-											</xsl:when>
-											<xsl:otherwise>
-												<xsl:choose>
-													<xsl:when test="$nudsGroup//object[@xlink:href = $uri]//nuds:title[@xml:lang = 'en']">
-														<xsl:value-of select="$nudsGroup//object[@xlink:href = $uri]//nuds:title[@xml:lang = 'en']"/>
-													</xsl:when>
-													<xsl:otherwise>
-														<xsl:value-of select="$nudsGroup//object[@xlink:href = $uri]//nuds:title[1]"/>
-													</xsl:otherwise>
-												</xsl:choose>
-											</xsl:otherwise>
-										</xsl:choose>
+										<xsl:value-of select="$nudsGroup//object[@xlink:href = $uri]//nuds:title[if (@xml:lang = $lang) then @xml:lang = $lang else 'en']"/>
 									</xsl:when>
 									<xsl:otherwise>
 										<xsl:value-of select="normalize-space(.)"/>
