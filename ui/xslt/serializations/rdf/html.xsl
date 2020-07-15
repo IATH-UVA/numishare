@@ -138,7 +138,6 @@
 		<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css"/>
 		<script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"/>
 		<script type="text/javascript" src="{$include_path}/javascript/leaflet.ajax.min.js"/>
-		<script type="text/javascript" src="{$include_path}/javascript/heatmap.min.js"/>
 		<script type="text/javascript" src="{$include_path}/javascript/leaflet-heatmap.js"/>
 		<script type="text/javascript" src="{$include_path}/javascript/symbol_map_functions.js"/>
 
@@ -175,6 +174,12 @@
 					<!-- render RDF -->
 					<xsl:apply-templates select="/content/rdf:RDF/*[1]" mode="symbol"/>
 
+					<xsl:if test="doc('input:subsymbols')/descendant::*[name() = 'nmo:Monogram' or name() = 'crm:E37_Mark']">
+						<h3>Sub Monograms</h3>
+						<div class="row">
+							<xsl:apply-templates select="doc('input:subsymbols')/descendant::*[name() = 'nmo:Monogram' or name() = 'crm:E37_Mark']" mode="subsymbol"/>
+						</div>
+					</xsl:if>
 
 					<!-- display map -->
 					<xsl:if test="$hasMints = true() or $hasFindspots = true()">
@@ -267,7 +272,6 @@
 				</small>
 			</h2>
 
-
 			<dl class="dl-horizontal">
 				<!-- display stable URI first -->
 				<dt>URI</dt>
@@ -294,9 +298,10 @@
 				<xsl:apply-templates select="skos:definition" mode="list-item">
 					<xsl:sort select="@xml:lang"/>
 				</xsl:apply-templates>
+				
+				<xsl:apply-templates select="skos:broader" mode="list-item"/>
 
 				<!-- constituent letters -->
-
 				<xsl:if test="crm:P106_is_composed_of">
 					<xsl:variable name="name">crm:P106_is_composed_of</xsl:variable>
 
@@ -319,8 +324,6 @@
 					</dd>
 				</xsl:if>
 
-
-
 				<xsl:apply-templates select="dcterms:source | dcterms:isPartOf" mode="list-item">
 					<xsl:sort select="name()"/>
 					<xsl:sort select="@rdf:resource"/>
@@ -330,8 +333,7 @@
 			<xsl:if test="descendant::crmdig:D1_Digital_Object">
 				<h3>Digital Image Metadata</h3>
 				<xsl:apply-templates select="descendant::crmdig:D1_Digital_Object"/>
-			</xsl:if>
-
+			</xsl:if>			
 		</div>
 	</xsl:template>
 
@@ -413,4 +415,45 @@
 			</xsl:choose>
 		</dd>
 	</xsl:template>
+	
+	<xsl:template match="*" mode="subsymbol">
+		<div class="col-md-3 col-sm-6 col-lg-2 monogram" style="height:240px">
+			<div class="text-center">
+				<a href="{@rdf:about}">
+					<img
+						src="{
+						if (crm:P165i_is_incorporated_in[1]/@rdf:resource) then
+						crm:P165i_is_incorporated_in[1]/@rdf:resource
+						else
+						crm:P165i_is_incorporated_in[1]/crmdig:D1_Digital_Object/@rdf:about}"
+						alt="Symbol image" style="max-height:200px;max-width:100%;"/>
+				</a>
+			</div>
+			<a href="{@rdf:about}">
+				<xsl:choose>
+					<xsl:when test="skos:prefLabel[@xml:lang = $lang]">
+						<xsl:value-of select="skos:prefLabel[@xml:lang = $lang]"/>
+					</xsl:when>
+					<xsl:otherwise>
+						<xsl:value-of select="skos:prefLabel[@xml:lang = 'en']"/>
+					</xsl:otherwise>
+				</xsl:choose>
+			</a>
+			<xsl:if test="crm:P106_is_composed_of">
+				<br/>
+				<strong>Constituent Letters: </strong>
+				<xsl:for-each select="crm:P106_is_composed_of">
+					<xsl:if test="position() = last() and position() &gt; 1">
+						<xsl:text> and</xsl:text>
+					</xsl:if>
+					<xsl:text> </xsl:text>
+					<xsl:value-of select="."/>
+					<xsl:if test="not(position() = last()) and (count(../crm:P106_is_composed_of) &gt; 2)">
+						<xsl:text>,</xsl:text>
+					</xsl:if>
+				</xsl:for-each>
+			</xsl:if>
+		</div>
+	</xsl:template>
+	
 </xsl:stylesheet>

@@ -173,6 +173,7 @@
 					<xsl:when test="$label = 'appraiser'">من الذى حدد القيمة</xsl:when>
 					<xsl:when test="$label = 'auction'">المزاد</xsl:when>
 					<xsl:when test="$label = 'authority'">المسئول عنها</xsl:when>
+					<xsl:when test="$label = 'authorizingEntity'">السلالات والفئات المقبولة الأخرى</xsl:when>
 					<xsl:when test="$label = 'axis'">المحور الرأسى</xsl:when>
 					<xsl:when test="$label = 'century'">القرن</xsl:when>
 					<xsl:when test="$label = 'chronList'">قائمة بالتسلسل الزمني</xsl:when>
@@ -1872,23 +1873,27 @@
 				</xsl:choose>
 			</xsl:when>
 			<xsl:otherwise>
-				<xsl:choose>					
+				<xsl:choose>			
+					<xsl:when test="$label = 'ah'">Hijra Date</xsl:when>
+					<xsl:when test="$label = 'ancient_place'">Ancient Place</xsl:when>
 					<xsl:when test="$label = 'acquiredFrom'">Acquired From</xsl:when>
 					<xsl:when test="$label = 'adminDesc'">Administrative History</xsl:when>
 					<xsl:when test="$label = 'chronItem'">Event</xsl:when>
 					<xsl:when test="$label = 'chronList'">Chronological List</xsl:when>
 					<xsl:when test="$label = 'coinType'">Coin Type</xsl:when>
-					<xsl:when test="$label = 'closing_date'">Closing Date</xsl:when>
+					<xsl:when test="$label = 'closing_date' or $label = 'closingDate'">Closing Date</xsl:when>
 					<xsl:when test="$label = 'conservationState'">Conservation State</xsl:when>
 					<xsl:when test="$label = 'provenance'">Provenance</xsl:when>
 					<xsl:when test="$label = 'dateOnObject'">Date on Object</xsl:when>
 					<xsl:when test="$label = 'dob'">Date on Object</xsl:when>
 					<xsl:when test="$label = 'dateRange'">Date Range</xsl:when>
 					<xsl:when test="$label = 'findspotDesc'">Findspot Description</xsl:when>
+					<xsl:when test="$label = 'findspot_type'">Findspot Type</xsl:when>
 					<xsl:when test="$label = 'fulltext'">Keyword</xsl:when>
 					<xsl:when test="$label = 'hoardDesc'">Hoard Description</xsl:when>
 					<xsl:when test="$label = 'fromDate'">From Date</xsl:when>
 					<xsl:when test="$label = 'toDate'">To Date</xsl:when>
+					<xsl:when test="$label = 'letter'">Monogram Letter</xsl:when>
 					<xsl:when test="$label = 'measurementsSet'">Measurements</xsl:when>
 					<xsl:when test="$label = 'noteSet'">Notes</xsl:when>
 					<xsl:when test="$label = 'objectType'">Object Type</xsl:when>
@@ -4124,7 +4129,7 @@
 					<xsl:when test="$label = 'visualize_response_type'">Select Numeric Response Type</xsl:when>
 					<xsl:when test="$label = 'visualize_select_measurement'">Select Measurement</xsl:when>
 					<xsl:when test="$label = 'visualize_chart_type'">Select Chart Type</xsl:when>
-					<xsl:when test="$label = 'visualize_categories'">Select Categories for Analysis</xsl:when>
+					<xsl:when test="$label = 'visualize_categories'">Select Category for Analysis</xsl:when>
 					<xsl:when test="$label = 'visualize_select_hoards'">Select Hoards</xsl:when>
 					<xsl:when test="$label = 'visualize_select_hoards_optional'">Select Hoards to Compare (optional)</xsl:when>
 					<xsl:when test="$label = 'visualize_compare'">Compare Queries</xsl:when>
@@ -4193,6 +4198,28 @@
 					<xsl:when test="$label = 'lang_uk'">Ukrainian</xsl:when>
 					<xsl:otherwise>
 						<xsl:value-of select="concat('[', $label, ']')"/>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:otherwise>
+		</xsl:choose>
+	</xsl:function>
+	
+	<!-- general purpose function for rendering descriptions based on available languages -->
+	<xsl:function name="numishare:display-description">
+		<xsl:param name="node" as="node()*"/>
+		<xsl:param name="lang"/>
+		
+		<xsl:choose>
+			<xsl:when test="$node/*:description[@xml:lang = $lang]">
+				<xsl:value-of select="$node/*:description[@xml:lang = $lang]"/>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:choose>
+					<xsl:when test="$node/*:description[@xml:lang = 'en']">
+						<xsl:value-of select="$node/*:description[@xml:lang = 'en']"/>
+					</xsl:when>
+					<xsl:otherwise>
+						<xsl:value-of select="$node/*:description[1]"/>
 					</xsl:otherwise>
 				</xsl:choose>
 			</xsl:otherwise>
@@ -4504,6 +4531,9 @@
 			<xsl:when test="ancestor::metadata">
 				<xsl:value-of select="concat('&#x022;', replace($val, '&#x022;', '\\&#x022;'), '&#x022;')"/>
 			</xsl:when>
+			<xsl:when test="$val castable as xs:gYear">
+				<xsl:value-of select="concat('&#x022;', replace($val, '&#x022;', '\\&#x022;'), '&#x022;')"/>
+			</xsl:when>
 			<xsl:when test="number($val) or $val = '0'">
 				<xsl:choose>
 					<xsl:when test="@datatype = 'xs:string'">
@@ -4535,6 +4565,7 @@
 					<xsl:when test="$element = 'dcterms:isPartOf'">Field of Numismatics</xsl:when>
 					<xsl:when test="$element = 'dcterms:license'">License</xsl:when>
 					<xsl:when test="$element = 'dcterms:source'">Source</xsl:when>
+					<xsl:when test="$element = 'skos:broader'">Broader Concept</xsl:when>
 					<xsl:when test="$element = 'skos:definition'">Definition</xsl:when>
 					<xsl:when test="$element = 'skos:prefLabel'">Preferred Label</xsl:when>
 				</xsl:choose>

@@ -3,16 +3,23 @@
 	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" version="2.0" xmlns:xlink="http://www.w3.org/1999/xlink"
 	xmlns:res="http://www.w3.org/2005/sparql-results#" xmlns:numishare="https://github.com/ewg118/numishare" xmlns:skos="http://www.w3.org/2004/02/skos/core#"
 	xmlns:nuds="http://nomisma.org/nuds" xmlns:nh="http://nomisma.org/nudsHoard" xmlns:nm="http://nomisma.org/id/" xmlns:tei="http://www.tei-c.org/ns/1.0"
-	xmlns:nmo="http://nomisma.org/ontology#" xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" exclude-result-prefixes="#all">
+	xmlns:gml="http://www.opengis.net/gml" xmlns:nmo="http://nomisma.org/ontology#" xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#"
+	exclude-result-prefixes="#all">
 	<xsl:include href="../../templates.xsl"/>
-	<!--<xsl:include href="../../templates-visualize.xsl"/>-->
-	<xsl:include href="../../templates-analyze.xsl"/>
 	<xsl:include href="../../functions.xsl"/>
+	<xsl:include href="../../templates-analyze.xsl"/>
+	<xsl:include href="../../templates-search.xsl"/>
 	<xsl:include href="../object/html-templates.xsl"/>
+	<xsl:include href="../sparql/type-examples.xsl"/>
 
 	<!-- URL params -->
 	<xsl:variable name="collection-name" select="substring-before(substring-after(doc('input:request')/request/request-uri, 'numishare/'), '/')"/>
-	<xsl:variable name="request-uri" select="concat('http://localhost:', if (//config/server-port castable as xs:integer) then //config/server-port else '8080', substring-before(doc('input:request')/request/request-uri, 'id/'))"/>
+	<xsl:variable name="request-uri"
+		select="
+			concat('http://localhost:', if (//config/server-port castable as xs:integer) then
+				//config/server-port
+			else
+				'8080', substring-before(doc('input:request')/request/request-uri, 'id/'))"/>
 	<xsl:param name="langParam" select="doc('input:request')/request/parameters/parameter[name = 'lang']/value"/>
 	<xsl:param name="lang">
 		<xsl:choose>
@@ -25,13 +32,23 @@
 		</xsl:choose>
 	</xsl:param>
 	<xsl:param name="pipeline">display</xsl:param>
+	
+	<!--pagination of specimen count -->
+	<xsl:param name="page" as="xs:integer">
+		<xsl:choose>
+			<xsl:when
+				test="
+				string-length(doc('input:request')/request/parameters/parameter[name = 'page']/value) &gt; 0 and doc('input:request')/request/parameters/parameter[name = 'page']/value castable
+				as xs:integer and number(doc('input:request')/request/parameters/parameter[name = 'page']/value) > 0">
+				<xsl:value-of select="doc('input:request')/request/parameters/parameter[name = 'page']/value"/>
+			</xsl:when>
+			<xsl:otherwise>1</xsl:otherwise>
+		</xsl:choose>
+	</xsl:param>
 
 	<!-- shared visualization/analysis params -->
 	<xsl:param name="type" select="doc('input:request')/request/parameters/parameter[name = 'type']/value"/>
-	<xsl:param name="chartType" select="doc('input:request')/request/parameters/parameter[name = 'chartType']/value"/>
-
-	<!-- use the calculate URI parameter to output tables/charts for counts of material, denomination, issuer, etc. -->
-	<xsl:param name="calculate" select="doc('input:request')/request/parameters/parameter[name = 'calculate']/value"/>
+	<xsl:param name="dist" select="doc('input:request')/request/parameters/parameter[name = 'dist']/value"/>
 	<xsl:param name="compare" select="doc('input:request')/request/parameters/parameter[name = 'compare']/value"/>
 	<xsl:param name="exclude" select="doc('input:request')/request/parameters/parameter[name = 'exclude']/value"/>
 	<xsl:param name="options" select="doc('input:request')/request/parameters/parameter[name = 'options']/value"/>
@@ -92,10 +109,10 @@
 					</xsl:for-each>
 				</list>
 			</xsl:variable>
-			
+
 			<xsl:for-each select="$type_series//type_series">
 				<xsl:variable name="type_series_uri" select="."/>
-				
+
 				<xsl:variable name="id-param">
 					<xsl:for-each select="$type_list//type_series_item[contains(., $type_series_uri)]">
 						<xsl:value-of select="substring-after(., 'id/')"/>
@@ -104,7 +121,7 @@
 						</xsl:if>
 					</xsl:for-each>
 				</xsl:variable>
-				
+
 				<xsl:if test="string-length($id-param) &gt; 0">
 					<xsl:for-each select="document(concat($type_series_uri, 'apis/getNuds?identifiers=', encode-for-uri($id-param)))//nuds:nuds">
 						<object xlink:href="{$type_series_uri}id/{nuds:control/nuds:recordId}">
@@ -121,18 +138,6 @@
 		</nudsGroup>
 	</xsl:variable>
 
-	<xsl:variable name="symbols" as="element()*">
-		<symbols>
-			<xsl:for-each select="$nudsGroup/descendant::nuds:symbol[@xlink:href]">
-				<xsl:variable name="href" select="@xlink:href"/>
-
-				<xsl:if test="doc-available(concat($href, '.rdf'))">
-					<xsl:copy-of select="document(concat($href, '.rdf'))"/>
-				</xsl:if>
-			</xsl:for-each>
-		</symbols>
-	</xsl:variable>
-
 	<!-- get subtypes -->
 	<xsl:variable name="subtypes" as="element()*">
 		<xsl:if test="$recordType = 'conceptual' and //config/collection_type = 'cointype'">
@@ -140,7 +145,8 @@
 		</xsl:if>
 	</xsl:variable>
 
-	<xsl:variable name="facets" select="string-join(//config//facet, ',')"/>
+	<!-- get the facets as a sequence -->
+	<xsl:variable name="facets" select="//config/facets/facet"/>
 
 	<!-- get non-coin-type RDF in the document -->
 	<xsl:variable name="rdf" as="element()*">
@@ -152,7 +158,7 @@
 				<xsl:for-each
 					select="
 						distinct-values(descendant::*[not(local-name() = 'typeDesc') and not(local-name() = 'reference')][contains(@xlink:href,
-						'nomisma.org')]/@xlink:href | $nudsGroup/descendant::*[not(local-name() = 'object') and not(local-name() = 'typeDesc')][contains(@xlink:href, 'nomisma.org')]/@xlink:href)">
+						'nomisma.org')]/@xlink:href | $nudsGroup/descendant::*[not(local-name() = 'object') and not(local-name() = 'typeDesc')][contains(@xlink:href, 'nomisma.org')]/@xlink:href | descendant::*[contains(@certainty, 'nomisma.org')]/@certainty | $nudsGroup/descendant::*[contains(@certainty, 'nomisma.org')]/@certainty)">
 					<xsl:value-of select="substring-after(., 'id/')"/>
 					<xsl:if test="not(position() = last())">
 						<xsl:text>|</xsl:text>
@@ -162,88 +168,19 @@
 
 			<xsl:variable name="rdf_url" select="concat('http://nomisma.org/apis/getRdf?identifiers=', encode-for-uri($id-param))"/>
 			<xsl:copy-of select="document($rdf_url)/rdf:RDF/*"/>
-		</rdf:RDF>
-	</xsl:variable>
-
-	<xsl:variable name="geonames" as="element()*">
-		<places>
-			<xsl:for-each select="distinct-values(descendant::*[local-name() = 'geogname'][contains(@xlink:href, 'geonames.org')]/@xlink:href)">
-				<xsl:variable name="geonameId" select="tokenize(., '/')[4]"/>
-
-				<xsl:if test="number($geonameId)">
-					<xsl:variable name="geonames_data" as="element()*">
-						<results>
-							<xsl:copy-of
-								select="document(concat($geonames-url, '/get?geonameId=', $geonameId, '&amp;username=', $geonames_api_key, '&amp;style=full'))"
-							/>
-						</results>
-					</xsl:variable>
-
-					<!-- only evaluate if there's a positive response -->
-					<xsl:if test="$geonames_data//geonameId = $geonameId">
-						<xsl:variable name="coordinates">
-							<xsl:if test="$geonames_data//lng castable as xs:decimal and $geonames_data//lat castable as xs:decimal">
-								<xsl:value-of select="concat($geonames_data//lng, ',', $geonames_data//lat)"/>
-							</xsl:if>
-						</xsl:variable>
-
-						<!-- generate AACR2 label -->
-						<xsl:variable name="label">
-							<xsl:variable name="countryCode" select="$geonames_data//countryCode[1]"/>
-							<xsl:variable name="countryName" select="$geonames_data//countryName[1]"/>
-							<xsl:variable name="name" select="$geonames_data//name[1]"/>
-							<xsl:variable name="adminName1" select="$geonames_data//adminName1[1]"/>
-							<xsl:variable name="fcode" select="$geonames_data//fcode[1]"/>
-							<!-- set a value equivalent to AACR2 standard for US, AU, CA, and GB.  This equation deviates from AACR2 for Malaysia since standard abbreviations for territories cannot be found -->
-							<xsl:value-of
-								select="
-									if ($countryCode = 'US' or $countryCode = 'AU' or $countryCode = 'CA') then
-										if ($fcode = 'ADM1') then
-											$name
-										else
-											concat($name, ' (',
-											$abbreviations//country[@code = $countryCode]/place[. = $adminName1]/@abbr, ')')
-									else
-										if ($countryCode = 'GB') then
-											if ($fcode = 'ADM1') then
-												$name
-											else
-												concat($name, ' (',
-												$adminName1, ')')
-										else
-											if ($fcode = 'PCLI') then
-												$name
-											else
-												concat($name, ' (', $countryName, ')')"
-							/>
-						</xsl:variable>
-
-						<place id="{.}" label="{$label}">
-							<!--<xsl:if test="$regionHierarchy = true() or $findspotHierarchy = true()">
-								<xsl:variable name="geonames_hier" as="element()*">
-									<results>
-										<xsl:copy-of select="document(concat($geonames-url, '/hierarchy?geonameId=', $geonameId, '&amp;username=', $geonames_api_key))"/>
-									</results>
-								</xsl:variable>
-								<!-\- create facetRegion hierarchy -\->
-								<xsl:variable name="hierarchy">
-									<xsl:for-each select="$geonames_hier//geoname[position() &gt;= 3]">
-										<xsl:value-of select="concat(geonameId, '/', name)"/>
-										<xsl:if test="not(position() = last())">
-											<xsl:text>|</xsl:text>
-										</xsl:if>
-									</xsl:for-each>
-								</xsl:variable>
-								
-								<xsl:attribute name="hierarchy" select="$hierarchy"/>
-							</xsl:if>-->
-
-							<xsl:value-of select="$coordinates"/>
-						</place>
-					</xsl:if>
+			
+			<!-- these individual RDF calls should be replaced with the getRDF API when many symbols might appear in one hoard -->
+			<xsl:for-each
+				select="
+				distinct-values($nudsGroup/descendant::nuds:symbol[contains(@xlink:href, 'http://numismatics.org')]/@xlink:href | $nudsGroup/descendant::nuds:symbol/descendant::tei:g[contains(@ref, 'http://numismatics.org')]/@ref |
+				$subtypes/descendant::nuds:symbol[contains(@xlink:href, 'http://numismatics.org')]/@xlink:href | $subtypes/descendant::nuds:symbol/descendant::tei:g[contains(@ref, 'http://numismatics.org')]/@ref)">
+				<xsl:variable name="href" select="."/>
+				
+				<xsl:if test="doc-available(concat($href, '.rdf'))">
+					<xsl:copy-of select="document(concat($href, '.rdf'))/rdf:RDF/*"/>
 				</xsl:if>
 			</xsl:for-each>
-		</places>
+		</rdf:RDF>
 	</xsl:variable>
 
 	<xsl:variable name="regions" as="element()*">
@@ -261,15 +198,27 @@
 	<!-- geographic boolean variables -->
 	<xsl:variable name="hasMints" as="xs:boolean">
 		<xsl:choose>
-			<xsl:when test="$rdf//nmo:Mint[geo:location or skos:related] or descendant::nuds:geographic/nuds:geogname[contains(@xlink:href, 'geonames.org')]">true</xsl:when>
+			<xsl:when
+				test="$rdf//nmo:Mint[geo:location or skos:related] or $regions//mint[@lat and @long] or descendant::nuds:geographic/nuds:geogname[contains(@xlink:href, 'geonames.org')]"
+				>true</xsl:when>
 			<xsl:otherwise>false</xsl:otherwise>
 		</xsl:choose>
 	</xsl:variable>
 
 	<xsl:variable name="hasFindspots" as="xs:boolean">
 		<xsl:choose>
-			<xsl:when test="descendant::nuds:geogname[@xlink:role = 'findspot'][@xlink:href]">true</xsl:when>
+			<xsl:when test="descendant::nh:findspot/gml:location">true</xsl:when>
+			<xsl:when test="descendant::nh:findspot/nh:fallsWithin/gml:location">true</xsl:when>
+			<xsl:when test="descendant::nh:geogname[@xlink:role = 'findspot'][@xlink:href]">true</xsl:when>
 			<xsl:otherwise>false</xsl:otherwise>
+		</xsl:choose>
+	</xsl:variable>
+
+	<!-- variable for whether or not geography has been enabled -->
+	<xsl:variable name="geoEnabled" as="xs:boolean">
+		<xsl:choose>
+			<xsl:when test="not(//config/baselayers/layer[@enabled = true()])">false</xsl:when>
+			<xsl:otherwise>true</xsl:otherwise>
 		</xsl:choose>
 	</xsl:variable>
 
@@ -284,6 +233,9 @@
 			<xsl:otherwise>false</xsl:otherwise>
 		</xsl:choose>
 	</xsl:variable>
+	
+	<xsl:variable name="hasSpecimens" select="number(doc('input:specimenCount')//res:sparql//descendant::res:binding[@name = 'count']/res:literal) &gt; 0" as="xs:boolean"/>
+	<xsl:variable name="specimenCount" select="doc('input:specimenCount')//res:sparql/descendant::res:binding[@name = 'count']/res:literal" as="xs:integer"/>
 
 	<xsl:template match="/">
 		<html
@@ -295,22 +247,32 @@
 			</xsl:if>
 			<head>
 				<xsl:call-template name="generic_head"/>
-				<script type="text/javascript" src="{$include_path}/javascript/highcharts.js"/>
-				<script type="text/javascript" src="{$include_path}/javascript/modules/exporting.js"/>
+				
+				<xsl:if test="$hasSpecimens">
+					<!--- IIIF -->				
+					<script type="text/javascript" src="{$include_path}/javascript/leaflet-iiif.js"/>
+					
+					<!-- Add fancyBox for popups of coin images -->
+					<link rel="stylesheet" href="{$include_path}/css/jquery.fancybox.css?v=2.1.5" type="text/css" media="screen"/>
+					<script type="text/javascript" src="{$include_path}/javascript/jquery.fancybox.pack.js?v=2.1.5"/>
+					<script type="text/javascript" src="{$include_path}/javascript/display_functions.js"/>
+				</xsl:if>
+				
+				<!-- visualization -->
+				<script type="text/javascript" src="https://d3plus.org/js/d3.min.js"/>
+				<script type="text/javascript" src="https://d3plus.org/js/d3plus-plot.v0.8.full.min.js"/>
 				<script type="text/javascript" src="{$include_path}/javascript/display_hoard_functions.js"/>
-				<script type="text/javascript" src="{$include_path}/javascript/analysis_functions.js"/>
+				<script type="text/javascript" src="{$include_path}/javascript/hoard_analysis_functions.js"/>
+				<script type="text/javascript" src="{$include_path}/javascript/search_functions.js"/>
 
-				<!-- mapping -->
-				<script type="text/javascript" src="http://openlayers.org/api/2.12/OpenLayers.js"/>
-				<script type="text/javascript" src="http://maps.google.com/maps/api/js?v=3.20&amp;sensor=false"/>
-				<script type="text/javascript" src="{$include_path}/javascript/mxn.js"/>
-				<script type="text/javascript" src="{$include_path}/javascript/timeline-2.3.0.js"/>
-				<link type="text/css" href="{$include_path}/css/timeline-2.3.0.css" rel="stylesheet"/>
-				<script type="text/javascript" src="{$include_path}/javascript/timemap_full.pack.js"/>
-				<script type="text/javascript" src="{$include_path}/javascript/param.js"/>
+				<!-- Add fancyBox -->
+				<link rel="stylesheet" href="{$include_path}/css/jquery.fancybox.css?v=2.1.5" type="text/css" media="screen"/>
+				<script type="text/javascript" src="{$include_path}/javascript/jquery.fancybox.pack.js?v=2.1.5"/>
+
 				<link type="text/css" href="{$include_path}/css/style.css" rel="stylesheet"/>
 			</head>
 			<body>
+
 				<xsl:call-template name="header"/>
 				<xsl:call-template name="display"/>
 				<xsl:call-template name="footer"/>
@@ -323,14 +285,10 @@
 						<xsl:value-of select="$collection_type"/>
 					</span>
 					<span id="path">
-						<xsl:choose>
-							<xsl:when test="$recordType = 'physical'">
-								<xsl:value-of select="concat($display_path, 'id/')"/>
-							</xsl:when>
-							<xsl:otherwise>
-								<xsl:value-of select="$display_path"/>
-							</xsl:otherwise>
-						</xsl:choose>
+						<xsl:value-of select="concat($display_path, 'id/')"/>
+					</span>
+					<span id="display_path">
+						<xsl:value-of select="$display_path"/>
 					</span>
 					<span id="include_path">
 						<xsl:value-of select="$include_path"/>
@@ -344,8 +302,17 @@
 					<span id="lang">
 						<xsl:value-of select="$lang"/>
 					</span>
+					<span id="page">record</span>
+					<div id="filterHoards">
+						<xsl:call-template name="search_forms"/>
+					</div>
 				</div>
+				<span id="manifest"/>
+				<div class="iiif-container-template" style="width:100%;height:100%"/>
+				<iframe id="model-iframe-template" width="640" height="480" frameborder="0" allowvr="true" allowfullscreen="true"
+					mozallowfullscreen="true" webkitallowfullscreen="true" onmousewheel=""/>
 				<div id="iiif-window" style="width:600px;height:600px;display:none"/>
+				<div id="model-window" style="width:640px;height:480px;display:none"/>
 			</body>
 		</html>
 	</xsl:template>
@@ -361,8 +328,32 @@
 
 	<xsl:template match="nh:nudsHoard">
 		<xsl:call-template name="icons"/>
+		
 		<xsl:call-template name="nudsHoard_content"/>
-
+		
+		<!-- if there are coins from this hoard: -->
+		<xsl:if test="$hasSpecimens = true()">
+			<xsl:variable name="limit"
+				select="
+				if (//config/specimens_per_page castable as xs:integer) then
+				//config/specimens_per_page
+				else
+				48"/>
+			
+			<xsl:apply-templates select="doc('input:specimens')/res:sparql" mode="hoard-examples">
+				<xsl:with-param name="page" select="$page" as="xs:integer"/>
+				<xsl:with-param name="numFound" select="$specimenCount" as="xs:integer"/>
+				<xsl:with-param name="limit" select="$limit" as="xs:integer"/>
+				<xsl:with-param name="endpoint"
+					select="
+					if (contains($sparql_endpoint, 'localhost')) then
+					'http://nomisma.org/query'
+					else
+					$sparql_endpoint"/>
+				<xsl:with-param name="objectUri" select="$objectUri"/>
+			</xsl:apply-templates>
+		</xsl:if>
+		
 		<!-- if there are annotations, then render -->
 		<xsl:if test="$hasAnnotations = true()">
 			<div class="row">
@@ -407,13 +398,19 @@
 						</xsl:otherwise>
 					</xsl:choose>
 				</h1>
+				<xsl:if test="$hasSpecimens = true()">
+					<a href="#examples">Coins from this Hoard</a>			
+				</xsl:if>
+				<xsl:if test="$hasSpecimens = true() and $hasAnnotations = true()">
+					<xsl:text> | </xsl:text>
+				</xsl:if>				
 				<xsl:if test="$hasAnnotations = true()">
 					<a href="#annotations">Annotations</a>
 				</xsl:if>
 			</div>
 		</div>
 		<div class="row">
-			<div class="col-md-6">
+			<div class="col-md-{if ($geoEnabled = true() and ($hasMints = true() or $hasFindspots = true())) then '6' else '12'}">
 				<div class="content">
 					<xsl:if test="nh:descMeta/nh:hoardDesc">
 						<div class="metadata_section">
@@ -437,124 +434,89 @@
 					</xsl:if>
 				</div>
 			</div>
-			<div class="col-md-6">
-				<div id="timemap">
-					<div id="mapcontainer">
-						<div id="map"/>
-					</div>
-					<div id="timelinecontainer">
-						<div id="timeline"/>
-					</div>
-				</div>
-				<div class="legend">
-					<table>
-						<tbody>
-							<tr>
-								<th style="width:100px">
-									<xsl:value-of select="numishare:normalizeLabel('maps_legend', $lang)"/>
-								</th>
-								<td style="background-color:#6992fd;border:2px solid black;width:50px;"/>
-								<td style="width:100px">
-									<xsl:value-of select="numishare:regularize_node('mint', $lang)"/>
-								</td>								
-								<xsl:if test="$rdf//nmo:Mint[skos:related]">
-									<!-- only display the uncertain mint key if there's an uncertain mint match -->
-									<td style="background-color:#666666;border:2px solid black;width:50px;"/>							
-									<td style="width:150px;padding-left:6px;">
-										<xsl:value-of select="numishare:regularize_node('mint', $lang)"/>
-										<xsl:text> (uncertain)</xsl:text>
-									</td>
-								</xsl:if>								
-								<td style="background-color:#d86458;border:2px solid black;width:50px;"/>
-								<td style="width:100px">
-									<xsl:value-of select="numishare:regularize_node('findspot', $lang)"/>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-				<p>View map in <a href="{$display_path}map/{$id}">fullscreen</a>.</p>
-			</div>
-		</div>
-		<div class="row">
-			<div class="col-md-12">
-				<!--********************************* MENU ******************************************* -->
-				<xsl:if test="count(nh:descMeta/nh:contentsDesc/nh:contents/*) &gt; 0">
-					<ul class="nav nav-pills" id="tabs">
-						<li class="active">
-							<a href="#contents" data-toggle="pill">
-								<xsl:value-of select="numishare:normalizeLabel('display_contents', $lang)"/>
-							</a>
-						</li>
-						<li>
-							<a href="#quantitative" data-toggle="pill">
-								<xsl:value-of select="numishare:normalizeLabel('display_quantitative', $lang)"/>
-							</a>
-						</li>
-					</ul>
-					<div class="tab-content">
-						<div class="tab-pane active" id="contents">
-							<xsl:if test="nh:descMeta/nh:contentsDesc">
-								<div class="metadata_section">
-									<xsl:apply-templates select="nh:descMeta/nh:contentsDesc/nh:contents"/>
-								</div>
-							</xsl:if>
-						</div>
-						<div class="tab-pane" id="quantitative">
-							<h1>
-								<xsl:value-of select="numishare:normalizeLabel('display_quantitative', $lang)"/>
-							</h1>
-							<span style="display:none" id="vis-pipeline">
-								<xsl:value-of select="$pipeline"/>
-							</span>
 
-							<!-- only show visualization interface if there's no uncertainty within the counts -->
-							<xsl:choose>
-								<xsl:when test="nh:descMeta/nh:contentsDesc/nh:contents/*/@certainty">
-									<p>Quantitative analyses are temporarily disabled in records with uncertain content counts.</p>
-								</xsl:when>
-								<xsl:otherwise>
-									<ul class="nav nav-pills" id="quant-tabs">
-										<li class="active">
-											<a href="#visTab" data-toggle="pill">
-												<xsl:value-of select="numishare:normalizeLabel('display_visualization', $lang)"/>
-											</a>
-										</li>
-										<li>
-											<a href="#dateTab" data-toggle="pill">
-												<xsl:value-of select="numishare:normalizeLabel('display_date-analysis', $lang)"/>
-											</a>
-										</li>
-										<li>
-											<a href="#csvTab" data-toggle="pill">
-												<xsl:value-of select="numishare:normalizeLabel('display_data-download', $lang)"/>
-											</a>
-										</li>
-									</ul>
-									<div class="tab-content">
-										<div class="tab-pane active" id="visTab">
-											<xsl:call-template name="hoard-visualization">
-												<xsl:with-param name="action" select="concat('./', $id, '#quantitative')"/>
-											</xsl:call-template>
-										</div>
-										<div class="tab-pane" id="dateTab">
-											<xsl:call-template name="date-vis">
-												<xsl:with-param name="action" select="concat('./', $id, '#quantitative')"/>
-											</xsl:call-template>
-										</div>
-										<div class="tab-pane" id="csvTab">
-											<xsl:call-template name="data-download"/>
-										</div>
-										<span id="formId" style="display:none"/>
-									</div>
-								</xsl:otherwise>
-							</xsl:choose>
-
+			<xsl:if test="$geoEnabled = true()">
+				<xsl:if test="$hasMints = true() or $hasFindspots = true()">
+					<div class="col-md-6">
+						<div id="mapcontainer"/>
+						<div class="legend">
+							<table>
+								<tbody>
+									<tr>
+										<th style="width:100px">
+											<xsl:value-of select="numishare:normalizeLabel('maps_legend', $lang)"/>
+										</th>
+										<td style="background-color:#6992fd;border:2px solid black;width:50px;"/>
+										<td style="width:100px">
+											<xsl:value-of select="numishare:regularize_node('mint', $lang)"/>
+										</td>
+										<xsl:if test="$rdf//nmo:Mint[skos:related]">
+											<!-- only display the uncertain mint key if there's an uncertain mint match -->
+											<td style="background-color:#666666;border:2px solid black;width:50px;"/>
+											<td style="width:150px;padding-left:6px;">
+												<xsl:value-of select="numishare:regularize_node('mint', $lang)"/>
+												<xsl:text> (uncertain)</xsl:text>
+											</td>
+										</xsl:if>
+										<td style="background-color:#d86458;border:2px solid black;width:50px;"/>
+										<td style="width:100px">
+											<xsl:value-of select="numishare:regularize_node('findspot', $lang)"/>
+										</td>
+									</tr>
+								</tbody>
+							</table>
 						</div>
+						<p>View map in <a href="{$display_path}map/{$id}">fullscreen</a>.</p>
 					</div>
 				</xsl:if>
-			</div>
+			</xsl:if>
 		</div>
+
+
+		<!--********************************* RENDERING HOARD CONTENTS AND VISUALIZATION OPTIONS ******************************************* -->
+		<xsl:if test="nh:descMeta/nh:contentsDesc/nh:contents/*">
+			<div class="row">
+				<div class="col-md-12">
+					<hr/>
+					<!-- if there are any calculable contents, display the interface -->
+					<xsl:choose>
+						<xsl:when test="nh:descMeta/nh:contentsDesc/nh:contents[nh:coin or nh:coinGrp[@count or @minCount or @maxCount]]">
+							<ul class="nav nav-pills" id="tabs">
+								<li class="active">
+									<a href="#contents" data-toggle="pill">
+										<xsl:value-of select="numishare:normalizeLabel('display_contents', $lang)"/>
+									</a>
+								</li>
+								<li>
+									<a href="#quantitative" data-toggle="pill">
+										<xsl:value-of select="numishare:normalizeLabel('display_quantitative', $lang)"/>
+									</a>
+								</li>
+							</ul>
+							<div class="tab-content">
+								<div class="tab-pane active" id="contents">
+									<xsl:apply-templates select="nh:descMeta/nh:contentsDesc/nh:contents"/>
+								</div>
+								<div class="tab-pane" id="quantitative">
+									<h1>
+										<xsl:value-of select="numishare:normalizeLabel('display_quantitative', $lang)"/>
+									</h1>
+									<!-- the chart and downloadable/bookmarkable links are hidden by default on the hoard record page -->
+									<xsl:call-template name="hoard-visualization">
+										<xsl:with-param name="hidden" select="true()"/>
+										<xsl:with-param name="page">record</xsl:with-param>
+										<xsl:with-param name="compare" select="$id"/>
+									</xsl:call-template>
+								</div>
+							</div>
+						</xsl:when>
+						<xsl:otherwise>
+							<xsl:apply-templates select="nh:descMeta/nh:contentsDesc/nh:contents"/>
+						</xsl:otherwise>
+					</xsl:choose>
+				</div>
+			</div>
+		</xsl:if>
 	</xsl:template>
 
 	<!-- ******** HOARD DESCRIPTION STRUCTURE ********-->
@@ -570,12 +532,13 @@
 			<xsl:value-of select="numishare:regularize_node(local-name(), $lang)"/>
 		</h3>
 		<ul>
-			<xsl:apply-templates select="nh:findspot"/>
-
 			<!-- display deposit date if explicit, otherwise, attempt to derive from the contents -->
 			<xsl:choose>
 				<xsl:when test="nh:deposit[nh:date or nh:dateRange]">
 					<xsl:apply-templates select="nh:deposit"/>
+				</xsl:when>
+				<xsl:when test="nh:closingDate[nh:date or nh:dateRange]">
+					<xsl:apply-templates select="nh:closingDate"/>
 				</xsl:when>
 				<xsl:otherwise>
 					<xsl:if test="$hasContents = true()">
@@ -650,45 +613,72 @@
 				</xsl:if>
 			</xsl:if>
 		</ul>
+
+		<xsl:apply-templates select="nh:findspot"/>
 	</xsl:template>
 
 	<!-- ************ TOP LEVEL DESCRIPTIVE METADATA TEMPLATES ************-->
 	<xsl:template match="nh:findspot">
-		<li>
-			<b><xsl:value-of select="numishare:regularize_node(local-name(), $lang)"/>: </b>
-			<xsl:call-template name="display-description"/>
-			<xsl:if test="nh:description and nh:geogname">
-				<xsl:text> : </xsl:text>
+		<h3>
+			<xsl:value-of select="numishare:regularize_node(local-name(), $lang)"/>
+		</h3>
+		<ul>
+			<xsl:if test="nh:description">
+				<b><xsl:value-of select="numishare:regularize_node('description', $lang)"/>: </b>
+				<xsl:value-of select="numishare:display-description(self::node(), $lang)"/>
 			</xsl:if>
-			<xsl:apply-templates select="nh:geogname[@xlink:href]"/>
-		</li>
+
+			<xsl:apply-templates select="nh:fallsWithin"/>
+		</ul>
 	</xsl:template>
 
-	<xsl:template match="nh:geogname">
-		<xsl:variable name="href" select="@xlink:href"/>
-		<xsl:variable name="label" select="$geonames//place[@id = $href]/@label"/>
+	<xsl:template match="nh:fallsWithin">
+		<li>
+			<b>Falls Within: </b>
+			<xsl:apply-templates select="nh:geogname[@xlink:role = 'findspot']"/>
+		</li>
+		<xsl:if test="nh:geogname[@xlink:role = 'ancient_place']">
+			<li>
+				<b>Ancient Place: </b>
+				<xsl:apply-templates select="nh:geogname[@xlink:role = 'ancient_place']"/>
+			</li>
+		</xsl:if>
 
-		<a href="{$display_path}results?q=findspot_facet:&#x022;{$label}&#x022;{if (string($langParam)) then concat('&amp;lang=', $langParam) else ''}">
-			<xsl:choose>
-				<xsl:when test="contains(@xlink:href, 'geonames.org')">
-					<xsl:value-of select="$label"/>
-				</xsl:when>
-				<xsl:otherwise>
-					<xsl:value-of select="."/>
-				</xsl:otherwise>
-			</xsl:choose>
+		<xsl:if test="nh:type">
+			<li>
+				<b><xsl:value-of select="numishare:regularize_node('type', $lang)"/>: </b>
+				<xsl:apply-templates select="nh:type"/>
+			</li>
+		</xsl:if>
+
+	</xsl:template>
+
+	<xsl:template match="nh:geogname|nh:type">
+		<xsl:variable name="facet" select="
+				if (@xlink:role) then
+					@xlink:role
+				else
+					'findspot_type'"/>
+
+
+		<a href="{$display_path}results?q={$facet}_facet:&#x022;{.}&#x022;{if (string($langParam)) then concat('&amp;lang=', $langParam) else ''}">
+			<xsl:value-of select="."/>
 		</a>
 		<!-- display certainty -->
-		<xsl:if test="string(@certainty)">
-			<i> (<xsl:value-of select="@certainty"/>)</i>
+		<xsl:apply-templates select="@certainty"/>
+
+		<xsl:if test="@xlink:href">
+			<a href="{@xlink:href}" target="_blank" rel="{numishare:normalizeProperty($recordType, if(@xlink:role) then @xlink:role else local-name())}"
+				class="external_link">
+				<span class="glyphicon glyphicon-new-window"/>
+			</a>
 		</xsl:if>
-		<a href="{$href}" target="_blank" rel="{numishare:normalizeProperty($recordType, if(@xlink:role) then @xlink:role else local-name())}"
-			class="external_link">
-			<span class="glyphicon glyphicon-new-window"/>
-		</a>
+		<xsl:if test="not(position() = last())">
+			<xsl:text>, </xsl:text>
+		</xsl:if>
 	</xsl:template>
 
-	<xsl:template match="nh:deposit | nh:discovery">
+	<xsl:template match="nh:deposit | nh:discovery | nh:closingDate">
 		<li>
 			<b><xsl:value-of select="numishare:regularize_node(local-name(), $lang)"/>: </b>
 
@@ -708,75 +698,76 @@
 	<xsl:template match="nh:disposition">
 		<li>
 			<b><xsl:value-of select="numishare:regularize_node(local-name(), $lang)"/>: </b>
-
-			<xsl:call-template name="display-description"/>
+			<xsl:value-of select="numishare:display-description(self::node(), $lang)"/>
 		</li>
 	</xsl:template>
 
 	<!-- ************ CONTENTS ************-->
 	<xsl:template match="nh:contents">
-		<h3>
-			<xsl:value-of select="numishare:regularize_node(local-name(), $lang)"/>
-		</h3>
+		<div class="metadata_section">
+			<h3>
+				<xsl:value-of select="numishare:regularize_node(local-name(), $lang)"/>
+			</h3>
 
-		<xsl:if test="nh:description or (@count or @minCount or @maxCount)">
-			<dl class="dl-horizontal">
-				<xsl:choose>
-					<xsl:when test="@count or @minCount or @maxCount">
-						<xsl:variable name="count-string">
-							<xsl:choose>
-								<xsl:when test="@count">
-									<xsl:value-of select="@count"/>
-								</xsl:when>
-								<xsl:otherwise>
-									<xsl:choose>
-										<xsl:when test="@minCount and not(@maxCount)">
-											<xsl:value-of select="concat(@minCount, '+')"/>
-										</xsl:when>
-										<xsl:when test="not(@minCount) and @maxCount">
-											<xsl:value-of select="concat('&lt;', @maxCount)"/>
-										</xsl:when>
-										<xsl:when test="@minCount and @maxCount">
-											<xsl:value-of select="concat(@minCount, '-', @maxCount)"/>
-										</xsl:when>
-									</xsl:choose>
-								</xsl:otherwise>
-							</xsl:choose>
-						</xsl:variable>
-						
-						<dt>
-							<xsl:value-of select="numishare:normalizeLabel('numeric_count', $lang)"/>
-						</dt>
-						<dd>
-							<xsl:value-of select="$count-string"/>
-						</dd>
-						<xsl:if test="not($count-string = nh:description)">
+			<xsl:if test="nh:description or (@count or @minCount or @maxCount)">
+				<dl class="dl-horizontal">
+					<xsl:choose>
+						<xsl:when test="@count or @minCount or @maxCount">
+							<xsl:variable name="count-string">
+								<xsl:choose>
+									<xsl:when test="@count">
+										<xsl:value-of select="@count"/>
+									</xsl:when>
+									<xsl:otherwise>
+										<xsl:choose>
+											<xsl:when test="@minCount and not(@maxCount)">
+												<xsl:value-of select="concat(@minCount, '+')"/>
+											</xsl:when>
+											<xsl:when test="not(@minCount) and @maxCount">
+												<xsl:value-of select="concat('&lt;', @maxCount)"/>
+											</xsl:when>
+											<xsl:when test="@minCount and @maxCount">
+												<xsl:value-of select="concat(@minCount, '-', @maxCount)"/>
+											</xsl:when>
+										</xsl:choose>
+									</xsl:otherwise>
+								</xsl:choose>
+							</xsl:variable>
+
+							<dt>
+								<xsl:value-of select="numishare:normalizeLabel('numeric_count', $lang)"/>
+							</dt>
+							<dd>
+								<xsl:value-of select="$count-string"/>
+							</dd>
+							<xsl:if test="not($count-string = nh:description)">
+								<xsl:apply-templates select="nh:description"/>
+							</xsl:if>
+						</xsl:when>
+						<xsl:otherwise>
 							<xsl:apply-templates select="nh:description"/>
-						</xsl:if>
-					</xsl:when>
-					<xsl:otherwise>
-						<xsl:apply-templates select="nh:description"/>
-					</xsl:otherwise>
-				</xsl:choose>
-			</dl>
-		</xsl:if>
+						</xsl:otherwise>
+					</xsl:choose>
+				</dl>
+			</xsl:if>
 
-		<table class="table table-striped">
-			<thead>
-				<tr>
-					<th style="width:10%" class="text-center">
-						<xsl:value-of select="numishare:normalizeLabel('numeric_count', $lang)"/>
-					</th>
-					<th>
-						<xsl:value-of select="numishare:regularize_node('description', $lang)"/>
-					</th>
-					<th style="width:10%" class="text-center"/>
-				</tr>
-			</thead>
-			<tbody>
-				<xsl:apply-templates select="descendant::nh:coin | descendant::nh:coinGrp"/>
-			</tbody>
-		</table>
+			<table class="table table-striped">
+				<thead>
+					<tr>
+						<th style="width:10%" class="text-center">
+							<xsl:value-of select="numishare:normalizeLabel('numeric_count', $lang)"/>
+						</th>
+						<th>
+							<xsl:value-of select="numishare:regularize_node('description', $lang)"/>
+						</th>
+						<th style="width:10%" class="text-center"/>
+					</tr>
+				</thead>
+				<tbody>
+					<xsl:apply-templates select="descendant::nh:coin | descendant::nh:coinGrp"/>
+				</tbody>
+			</table>
+		</div>
 	</xsl:template>
 
 	<!-- display table row for each coin or coinGrp -->

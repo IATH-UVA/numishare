@@ -8,8 +8,8 @@
 	xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:res="http://www.w3.org/2005/sparql-results#" xmlns:xlink="http://www.w3.org/1999/xlink"
 	xmlns:mets="http://www.loc.gov/METS/" xmlns:numishare="https://github.com/ewg118/numishare" xmlns:nm="http://nomisma.org/id/"
 	xmlns:gml="http://www.opengis.net/gml" xmlns:tei="http://www.tei-c.org/ns/1.0" xmlns:nmo="http://nomisma.org/ontology#"
-	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:skos="http://www.w3.org/2004/02/skos/core#" xmlns:nuds="http://nomisma.org/nuds"
-	exclude-result-prefixes="#all" version="2.0">
+	xmlns:crm="http://www.cidoc-crm.org/cidoc-crm/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+	xmlns:nuds="http://nomisma.org/nuds" exclude-result-prefixes="#all" version="2.0">
 	<xsl:include href="../../templates.xsl"/>
 	<xsl:include href="../../functions.xsl"/>
 	<xsl:include href="../../vis-templates.xsl"/>
@@ -126,21 +126,6 @@
 						</xsl:call-template>
 					</xsl:for-each>
 				</xsl:when>
-				<xsl:when test="descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][string(@xlink:href)]">
-					<object>
-						<xsl:copy-of select="descendant::nuds:typeDesc"/>
-					</object>
-
-					<xsl:for-each select="descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][string(@xlink:href)]">
-						<xsl:variable name="uri" select="@xlink:href"/>
-
-						<object xlink:href="{$uri}">
-							<xsl:if test="doc-available(concat($uri, '.xml'))">
-								<xsl:copy-of select="document(concat($uri, '.xml'))/nuds:nuds"/>
-							</xsl:if>
-						</object>
-					</xsl:for-each>
-				</xsl:when>
 				<xsl:otherwise>
 					<object>
 						<xsl:copy-of select="descendant::nuds:typeDesc"/>
@@ -148,18 +133,6 @@
 				</xsl:otherwise>
 			</xsl:choose>
 		</nudsGroup>
-	</xsl:variable>
-
-	<xsl:variable name="symbols" as="element()*">
-		<symbols>
-			<xsl:for-each select="$nudsGroup/descendant::nuds:symbol[@xlink:href]">
-				<xsl:variable name="href" select="@xlink:href"/>
-
-				<xsl:if test="doc-available(concat($href, '.rdf'))">
-					<xsl:copy-of select="document(concat($href, '.rdf'))"/>
-				</xsl:if>
-			</xsl:for-each>
-		</symbols>
 	</xsl:variable>
 
 	<!-- get subtypes -->
@@ -171,7 +144,8 @@
 		</xsl:if>
 	</xsl:variable>
 
-	<xsl:variable name="facets" select="string-join(//config//facet, ',')"/>
+	<!-- get the facets as a sequence -->
+	<xsl:variable name="facets" select="//config/facets/facet"/>
 
 	<!-- get non-coin-type RDF in the document -->
 	<xsl:variable name="rdf" as="element()*">
@@ -193,6 +167,21 @@
 
 			<xsl:variable name="rdf_url" select="concat('http://nomisma.org/apis/getRdf?identifiers=', encode-for-uri($id-param))"/>
 			<xsl:copy-of select="document($rdf_url)/rdf:RDF/*"/>
+
+			<xsl:if test="descendant::nuds:findspotDesc[contains(@xlink:href, 'coinhoards.org')]">
+				<xsl:copy-of select="document(concat(descendant::nuds:findspotDesc/@xlink:href, '.rdf'))/rdf:RDF/*"/>
+			</xsl:if>
+
+			<xsl:for-each
+				select="
+					distinct-values($nudsGroup/descendant::nuds:symbol[contains(@xlink:href, 'http://numismatics.org')]/@xlink:href | $nudsGroup/descendant::nuds:symbol/descendant::tei:g[contains(@ref, 'http://numismatics.org')]/@ref |
+					$subtypes/descendant::nuds:symbol[contains(@xlink:href, 'http://numismatics.org')]/@xlink:href | $subtypes/descendant::nuds:symbol/descendant::tei:g[contains(@ref, 'http://numismatics.org')]/@ref)">
+				<xsl:variable name="href" select="."/>
+
+				<xsl:if test="doc-available(concat($href, '.rdf'))">
+					<xsl:copy-of select="document(concat($href, '.rdf'))/rdf:RDF/*"/>
+				</xsl:if>
+			</xsl:for-each>
 		</rdf:RDF>
 	</xsl:variable>
 
@@ -225,7 +214,7 @@
 				<xsl:choose>
 					<xsl:when test="descendant::nuds:findspotDesc/@xlink:href">true</xsl:when>
 					<xsl:when test="descendant::nuds:geogname[@xlink:role = 'findspot'][contains(@xlink:href, 'geonames.org')]">true</xsl:when>
-					<xsl:when test="descendant::nuds:findspot/gml:Point">true</xsl:when>
+					<xsl:when test="descendant::nuds:findspot/gml:location/gml:Point">true</xsl:when>
 					<xsl:otherwise>false</xsl:otherwise>
 				</xsl:choose>
 			</xsl:otherwise>
@@ -346,8 +335,8 @@
 								<script type="text/javascript" src="{$include_path}/javascript/display_functions.js"/>
 
 								<!-- visualization -->
-								<script type="text/javascript" src="https://d3plus.org/js/d3.js"/>
-								<script type="text/javascript" src="https://d3plus.org/js/d3plus.js"/>
+								<script type="text/javascript" src="https://d3plus.org/js/d3.min.js"/>
+								<script type="text/javascript" src="https://d3plus.org/js/d3plus-plot.v0.8.full.min.js"/>
 								<script type="text/javascript" src="{$include_path}/javascript/vis_functions.js"/>
 
 								<!-- mapping -->
@@ -504,6 +493,13 @@
 					<xsl:when test="$recordType = 'conceptual'">
 						<div class="row">
 							<div class="col-md-12">
+
+								<xsl:if test="nuds:control/nuds:publicationStatus = 'deprecatedType'">
+									<div class="alert alert-box alert-danger">
+										<span class="glyphicon glyphicon-exclamation-sign"/>
+										<strong>Attention:</strong> This type has been deprecated, but does not link to a newer reference.</div>
+								</xsl:if>
+
 								<h1 id="object_title" property="skos:prefLabel">
 									<xsl:if test="$lang = 'ar'">
 										<xsl:attribute name="style">direction: ltr; text-align:right</xsl:attribute>
@@ -968,16 +964,8 @@
 				<xsl:when test="string(@xlink:href)">
 					<xsl:choose>
 						<xsl:when test="contains(@xlink:href, 'nomisma.org') or contains(@xlink:href, 'coinhoards.org')">
-							<xsl:variable name="label">
-								<xsl:choose>
-									<xsl:when test="doc-available(concat(@xlink:href, '.rdf'))">
-										<xsl:value-of select="document(concat(@xlink:href, '.rdf'))//skos:prefLabel[@xml:lang = 'en']"/>
-									</xsl:when>
-									<xsl:otherwise>
-										<xsl:value-of select="@xlink:href"/>
-									</xsl:otherwise>
-								</xsl:choose>
-							</xsl:variable>
+							<xsl:variable name="uri" select="@xlink:href"/>
+							<xsl:variable name="label" select="$rdf//*[@rdf:about = $uri]/skos:prefLabel[@xml:lang = 'en']"/>
 
 							<ul>
 								<li>
@@ -1094,13 +1082,13 @@
 			</ul>
 		</li>
 	</xsl:template>
-	
+
 	<xsl:template match="nuds:chronItem">
 		<li>
 			<xsl:apply-templates/>
 		</li>
 	</xsl:template>
-	
+
 	<xsl:template match="nuds:date">
 		<xsl:choose>
 			<xsl:when test="parent::nuds:chronItem">
@@ -1123,11 +1111,6 @@
 			<xsl:value-of select="."/>
 		</span>
 	</xsl:template>
-
-	<!-- hide symbols with left/right/center/exerque positions, format elsewhere -->
-	<xsl:template
-		match="nuds:symbol[@position = 'left'] | nuds:symbol[@position = 'center'] | nuds:symbol[@position = 'right'] | nuds:symbol[@position = 'exergue']"
-		mode="descMeta"/>
 
 	<!-- *********** IMAGE TEMPLATES FOR PHYSICAL OBJECTS ********** -->
 	<xsl:template name="image">

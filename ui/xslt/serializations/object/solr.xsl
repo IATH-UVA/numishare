@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Author: Ethan Gruber
-	Modified: April 2012
+	Modified: April 2020
 	Function: This stylesheet reads the incoming object model (nuds or nudsHoard)
 -->
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:nuds="http://nomisma.org/nuds" xmlns:nh="http://nomisma.org/nudsHoard"
 	xmlns:nm="http://nomisma.org/id/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:mets="http://www.loc.gov/METS/" xmlns:gml="http://www.opengis.net/gml"
 	xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:res="http://www.w3.org/2005/sparql-results#"
-	xmlns:nmo="http://nomisma.org/ontology#" xmlns:numishare="https://github.com/ewg118/numishare" exclude-result-prefixes="#all" version="2.0">
+	xmlns:nmo="http://nomisma.org/ontology#" xmlns:numishare="https://github.com/ewg118/numishare" xmlns:tei="http://www.tei-c.org/ns/1.0" exclude-result-prefixes="#all" version="2.0">
 	<xsl:output method="xml" encoding="UTF-8"/>
 	<xsl:include href="../../functions.xsl"/>
 	<xsl:include href="../nuds/solr.xsl"/>
@@ -30,12 +30,13 @@
 		<nudsGroup>
 			<xsl:variable name="type_list" as="element()*">
 				<list>
-					<xsl:for-each select="distinct-values(descendant::nuds:typeDesc[string(@xlink:href)]/@xlink:href|descendant::nuds:reference[@xlink:arcrole='nmo:hasTypeSeriesItem'][string(@xlink:href)]/@xlink:href)">
+					<xsl:for-each
+						select="distinct-values(descendant::nuds:typeDesc[string(@xlink:href)]/@xlink:href | descendant::nuds:reference[@xlink:arcrole = 'nmo:hasTypeSeriesItem'][string(@xlink:href)]/@xlink:href)">
 						<type_series_item>
 							<xsl:if test="contains(., '/id/')">
 								<xsl:attribute name="type_series" select="substring-before(., 'id/')"/>
 							</xsl:if>
-							
+
 							<xsl:value-of select="."/>
 						</type_series_item>
 					</xsl:for-each>
@@ -62,16 +63,16 @@
 					</xsl:for-each>
 				</xsl:if>
 			</xsl:for-each>
-			
+
 			<!-- include individual REST calls for URIs not in a recognized, Numishare based id/ namespace -->
 			<xsl:for-each select="$type_list//type_series_item[not(@type_series)]">
 				<xsl:variable name="uri" select="."/>
-				
+
 				<xsl:call-template name="numishare:getNudsDocument">
 					<xsl:with-param name="uri" select="$uri"/>
-				</xsl:call-template>				
+				</xsl:call-template>
 			</xsl:for-each>
-			
+
 			<!-- get typeDesc -->
 			<xsl:for-each select="descendant::nuds:typeDesc[not(string(@xlink:href))]">
 				<object>
@@ -81,22 +82,31 @@
 		</nudsGroup>
 	</xsl:variable>
 
-	<!-- get symbol metadata -->	
-	
+
+	<!-- get metadata from subtypes -->
 	<xsl:variable name="index_subtype_metadata" as="xs:boolean">
-		<xsl:value-of select="if (/content/config/index_subtype_metadata = 'true') then true() else false()"/>
+		<xsl:value-of select="
+				if (/content/config/index_subtype_metadata = 'true') then
+					true()
+				else
+					false()"/>
+	</xsl:variable>
+
+	<xsl:variable name="index_subtypes_as_references" as="xs:boolean">
+		<xsl:value-of select="
+				if (/content/config/index_subtypes_as_references = 'true') then
+					true()
+				else
+					false()"/>
 	</xsl:variable>
 	
-	<xsl:variable name="symbols" as="element()*">
-		<symbols>
-			<xsl:for-each select="$nudsGroup/descendant::nuds:symbol[@xlink:href]">
-				<xsl:variable name="href" select="@xlink:href"/>
-
-				<xsl:if test="doc-available(concat($href, '.rdf'))">
-					<xsl:copy-of select="document(concat($href, '.rdf'))"/>
-				</xsl:if>
-			</xsl:for-each>
-		</symbols>
+	<!-- get subtypes -->
+	<xsl:variable name="subtypes" as="element()*">
+		<xsl:if test="//config/collection_type = 'cointype' and ($index_subtype_metadata = true() or $index_subtypes_as_references = true())">
+			<xsl:if test="doc-available(concat($request-uri, '/get_subtypes?identifiers=', encode-for-uri(string-join(descendant::nuds:recordId, '|'))))">
+				<xsl:copy-of select="document(concat($request-uri, '/get_subtypes?identifiers=', encode-for-uri(string-join(descendant::nuds:recordId, '|'))))/*"/>
+			</xsl:if>
+		</xsl:if>
 	</xsl:variable>
 
 	<!-- get non-coin-type RDF in the document -->
@@ -115,24 +125,21 @@
 				<xsl:with-param name="end">100</xsl:with-param>
 				<xsl:with-param name="count" select="$count"/>
 			</xsl:call-template>
+			
+			<xsl:for-each
+				select="
+				distinct-values($nudsGroup/descendant::nuds:symbol[contains(@xlink:href, 'http://numismatics.org')]/@xlink:href | $nudsGroup/descendant::nuds:symbol/descendant::tei:g[contains(@ref, 'http://numismatics.org')]/@ref |
+				$subtypes/descendant::nuds:symbol[contains(@xlink:href, 'http://numismatics.org')]/@xlink:href | $subtypes/descendant::nuds:symbol/descendant::tei:g[contains(@ref, 'http://numismatics.org')]/@ref)">
+				<xsl:variable name="href" select="."/>
+				
+				<xsl:if test="doc-available(concat($href, '.rdf'))">
+					<xsl:copy-of select="document(concat($href, '.rdf'))/rdf:RDF/*"/>
+				</xsl:if>
+			</xsl:for-each>
 		</rdf:RDF>
 	</xsl:variable>
 
-	<!-- Oct 29, 2018: commenting out the indexing of findspots via SPARQL; it is no longer scalable for indexing. Prepare to transition maps page to SPARQL-derived GeoJSON-->
-	<!-- get block of images from SPARQL endpoint -->
-	<!--<xsl:variable name="sparqlResult" as="element()*">
-		<xsl:if test="string($sparql_endpoint) and //nuds:nuds/@recordType = 'conceptual'">
-			<response xmlns="http://www.w3.org/2005/sparql-results#">
-				<xsl:for-each select="descendant::nuds:recordId">
-					<group>
-						<xsl:attribute name="id" select="."/>
-						<xsl:variable name="uri" select="concat(//config/uri_space, .)"/>
-						<xsl:copy-of select="document(concat($request-uri, '/sparql?uri=', $uri, '&amp;template=solr'))//res:result"/>
-					</group>
-				</xsl:for-each>
-			</response>
-		</xsl:if>
-	</xsl:variable>-->
+	<!-- Oct 29, 2018: commenting out the indexing of findspots via SPARQL; it is no longer scalable for indexing. Prepare to transition maps page to SPARQL-derived GeoJSON-->	
 
 	<!-- accumulate unique geonames IDs -->
 	<xsl:variable name="geonames" as="element()*">
@@ -143,16 +150,19 @@
 					'geonames.org')]/@xlink:href | $nudsGroup/descendant::*[local-name() = 'geogname'][contains(@xlink:href, 'geonames.org')]/@xlink:href | $rdf/descendant::*[not(local-name() = 'closeMatch')][contains(@rdf:resource,
 					'geonames.org')]/@rdf:resource | descendant::*[local-name() = 'subject'][contains(@xlink:href,
 					'geonames.org')]/@xlink:href)">
-				
+
 				<!-- commented out: $sparqlResult/descendant::res:binding[@name = 'findspot'][contains(res:uri, 'geonames.org')]/res:uri -->
 				<xsl:variable name="geonameId" select="tokenize(., '/')[4]"/>
 
 				<xsl:if test="number($geonameId)">
 					<xsl:variable name="geonames_data" as="element()*">
+						<xsl:variable name="api"
+							select="concat($geonames-url, '/get?geonameId=', $geonameId, '&amp;username=', $geonames_api_key, '&amp;style=full')"/>
+
 						<results>
-							<xsl:copy-of
-								select="document(concat($geonames-url, '/get?geonameId=', $geonameId, '&amp;username=', $geonames_api_key, '&amp;style=full'))"
-							/>
+							<xsl:if test="doc-available($api)">
+								<xsl:copy-of select="document($api)"/>
+							</xsl:if>
 						</results>
 					</xsl:variable>
 

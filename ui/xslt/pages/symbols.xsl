@@ -57,6 +57,7 @@
 
 	<!-- config variables-->
 	<xsl:variable name="collection_type" select="//config/collection_type"/>
+	<xsl:variable name="union_type_catalog" select="boolean(//config/union_type_catalog/@enabled)"/>
 
 	<xsl:template match="/">
 		<html>
@@ -83,6 +84,15 @@
 				<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"/>
 				<link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
 				<script type="text/javascript" src="https://netdna.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"/>
+		
+				<!-- map functions -->
+				<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css"/>
+				<script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"/>
+				<script type="text/javascript" src="{$include_path}/javascript/leaflet.ajax.min.js"/>
+				
+				<!-- fancybox -->
+				<link rel="stylesheet" href="{$include_path}/css/jquery.fancybox.css?v=2.1.5" type="text/css" media="screen"/>
+				<script type="text/javascript" src="{$include_path}/javascript/jquery.fancybox.pack.js?v=2.1.5"/>
 				<script type="text/javascript" src="{$include_path}/javascript/symbol_functions.js"/>
 				<link type="text/css" href="{$include_path}/css/style.css" rel="stylesheet"/>
 				<xsl:if test="string(//config/google_analytics)">
@@ -109,7 +119,21 @@
 				<div class="col-md-12">
 					<h1>
 						<xsl:value-of select="numishare:normalizeLabel('header_symbols', $lang)"/>
+						<xsl:if test="count($symbol//value) &gt; 0">
+							<small>
+								<a href="#resultMap" id="map_results">
+									<xsl:value-of select="numishare:normalizeLabel('results_map-results', $lang)"/>
+								</a>
+							</small>
+						</xsl:if>
 					</h1>
+
+
+
+					<div style="display:none">
+						<div id="resultMap"/>
+					</div>
+
 
 					<!-- display clickable buttons -->
 					<xsl:apply-templates select="doc('input:letters')//letters"/>
@@ -145,25 +169,45 @@
 				</div>
 			</div>
 		</div>
+		
+		<div class="hidden">
+			<span id="baselayers">
+				<xsl:value-of select="string-join(//config/baselayers/layer[@enabled = true()], ',')"/>
+			</span>
+			<span id="mapboxKey">
+				<xsl:value-of select="//config/mapboxKey"/>
+			</span>
+			<span id="lang">
+				<xsl:value-of select="$lang"/>
+			</span>
+			<span id="typeSeries">
+				<xsl:value-of select="if (//config/union_type_catalog/@enabled = true()) then string-join(//config/union_type_catalog/series/@typeSeries, '|') else //config/type_series"/>
+			</span>
+		</div>
 	</xsl:template>
 
 	<!-- ******** RDF TEMPLATES ********* -->
 	<xsl:template match="*" mode="symbol">
-		<xsl:variable name="id" select="tokenize(@rdf:about, '/')[last()]"/>
+		<xsl:variable name="uri"
+			select="
+				if ($union_type_catalog = true()) then
+					@rdf:about
+				else
+					concat('symbol/', tokenize(@rdf:about, '/')[last()])"/>
 
 		<div class="col-md-3 col-sm-6 col-lg-2 monogram" style="height:240px">
 			<div class="text-center">
-				<a href="symbol/{$id}">
+				<a href="{$uri}">
 					<img
 						src="{
 						if (crm:P165i_is_incorporated_in[1]/@rdf:resource) then
 						crm:P165i_is_incorporated_in[1]/@rdf:resource
 						else
 						crm:P165i_is_incorporated_in[1]/crmdig:D1_Digital_Object/@rdf:about}"
-						alt="Symbol image" style="max-height:200px"/>
+						alt="Symbol image" style="max-height:200px;max-width:100%"/>
 				</a>
 			</div>
-			<a href="symbol/{$id}">
+			<a href="{$uri}">
 				<xsl:choose>
 					<xsl:when test="skos:prefLabel[@xml:lang = $lang]">
 						<xsl:value-of select="skos:prefLabel[@xml:lang = $lang]"/>
@@ -177,7 +221,7 @@
 				<br/>
 				<strong>Constituent Letters: </strong>
 				<xsl:for-each select="crm:P106_is_composed_of">
-					<xsl:if test="position() = last()">
+					<xsl:if test="position() = last() and position() &gt; 1">
 						<xsl:text> and</xsl:text>
 					</xsl:if>
 					<xsl:text> </xsl:text>

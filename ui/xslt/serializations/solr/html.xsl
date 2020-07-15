@@ -124,13 +124,13 @@
 				<xsl:if test="count(//lst[contains(@name, '_geo')]/int) &gt; 0">
 					<!-- maps-->
 					<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.0/dist/leaflet.css"/>
-					<link rel="stylesheet" href="{$include_path}/css/MarkerCluster.css"/>
-					<link rel="stylesheet" href="{$include_path}/css/MarkerCluster.Default.css"/>
+					<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"/>
+					<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"/>
 					
 					<!-- js -->
 					<script src="https://unpkg.com/leaflet@1.0.0/dist/leaflet.js"/>					
 					<script type="text/javascript" src="{$include_path}/javascript/leaflet.ajax.min.js"/>
-					<script type="text/javascript" src="{$include_path}/javascript/leaflet.markercluster.js"/>
+					<script type="text/javascript" src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"/>
 					<script type="text/javascript" src="{$include_path}/javascript/result_map_functions.js"/>
 				</xsl:if>
 				<xsl:if test="string(//config/google_analytics)">
@@ -283,7 +283,10 @@
 							</xsl:if>							
 						</div>
 						<div id="refine_results">
+							<!-- keyword search -->
 							<xsl:call-template name="quick_search"/>
+							
+							<!-- more complex facet form -->
 							<h3>
 								<xsl:value-of select="numishare:normalizeLabel('results_refine-results', $lang)"/>
 							</h3>
@@ -295,7 +298,7 @@
 				</div>
 			</div>
 			<div id="backgroundPopup"/>
-			<div style="display:none">
+			<div class="hidden">
 				<span id="collection_type">
 					<xsl:value-of select="$collection_type"/>
 				</span>
