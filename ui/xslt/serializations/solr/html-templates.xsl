@@ -340,7 +340,7 @@
 							</xsl:for-each>
 						</dd>
 					</xsl:if>
-					<xsl:if test="arr[@name = 'provenance_facet']">
+					<!--<xsl:if test="arr[@name = 'provenance_facet']">
 						<dt>
 							<xsl:value-of select="numishare:regularize_node('provenance', $lang)"/>
 						</dt>
@@ -354,7 +354,7 @@
 								</xsl:if>
 							</xsl:for-each>
 						</dd>
-					</xsl:if>
+					</xsl:if>-->
 				</xsl:otherwise>
 			</xsl:choose>
 			<!-- display appropriate sort category if it isn't one of the default display fields -->
